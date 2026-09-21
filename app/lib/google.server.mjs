@@ -30,11 +30,12 @@ export async function finishGoogle(db,{state,code,cookie,error},oauthFactory=cli
  await db.$transaction(async tx=>{if(!await tx.seoWorkspace.findUnique({where:{shop:row.shop}}))throw new Error("Shopify uygulaması artık bağlı değil.");await tx.googleConnection.upsert({where:{shop:row.shop},create:{shop:row.shop,tokens:seal(tokens,row.shop),properties:JSON.stringify(properties),property:properties[0]},update:{tokens:seal(tokens,row.shop),properties:JSON.stringify(properties),property:properties[0],syncedAt:null}});});
  return row.shop;
 }
-export function dateRange(now=new Date()){
+export function dateRange(now=new Date(),days=28){
+ if(![7,28,90].includes(days))throw new Error('Geçersiz dönem. 7 gün, 28 gün veya 3 ay seçin.');
  // Search Console groups dates in Pacific time. Leave three days for finalized data.
  const pacific=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
- const end=new Date(`${pacific}T00:00:00Z`);end.setUTCDate(end.getUTCDate()-3);const start=new Date(end);start.setUTCDate(start.getUTCDate()-27);
- const previousEnd=new Date(start);previousEnd.setUTCDate(previousEnd.getUTCDate()-1);const previousStart=new Date(previousEnd);previousStart.setUTCDate(previousStart.getUTCDate()-27);
+ const end=new Date(`${pacific}T00:00:00Z`);end.setUTCDate(end.getUTCDate()-3);const start=new Date(end);start.setUTCDate(start.getUTCDate()-(days-1));
+ const previousEnd=new Date(start);previousEnd.setUTCDate(previousEnd.getUTCDate()-1);const previousStart=new Date(previousEnd);previousStart.setUTCDate(previousStart.getUTCDate()-(days-1));
  return [[start,end],[previousStart,previousEnd]].map(pair=>pair.map(d=>d.toISOString().slice(0,10)));
 }
 export async function fetchGoogleReport(oauth,property,startDate,endDate,{dimensions=['page'],country=null,maxRows=50000}={}){
@@ -56,12 +57,13 @@ export async function fetchGoogleReport(oauth,property,startDate,endDate,{dimens
  const grain=!dimensions.length?'property':dimensions.includes('date')?'page-date':dimensions.includes('query')?'page-query':'page';
  return {property,startDate,endDate,grain,country:country||'all',device:'all',searchType:'web',rows,importedAt:new Date().toISOString(),source:'google-api',truncated};
 }
-export async function syncGoogle(db,shop,state,oauthFactory=client){
+export async function syncGoogle(db,shop,state,oauthFactory=client,days=state.googleDays||28){
+ const ranges=dateRange(new Date(),Number(days));
  const row=await db.googleConnection.findUnique({where:{shop}});if(!row?.property||!ownProperty(row.property))throw new Error("Önce Google hesabını bağlayın.");
  const oauth=oauthFactory();oauth.setCredentials(unseal(row.tokens,shop));let reports,detailed;
  try{
   await oauth.getAccessToken();reports=[];detailed=[];
-  for(const country of ['usa',null])for(const [start,end] of dateRange()){
+  for(const country of ['usa',null])for(const [start,end] of ranges){
    const [pages,queries,daily,total]=await Promise.all([
     fetchGoogleReport(oauth,row.property,start,end,{country}),
     fetchGoogleReport(oauth,row.property,start,end,{country,dimensions:['query','page'],maxRows:10000}),
@@ -78,6 +80,7 @@ export async function syncGoogle(db,shop,state,oauthFactory=client){
  state.gsc=state.gsc.filter(r=>!reports.some(n=>n.property===r.property&&n.grain===r.grain&&n.country===r.country&&n.startDate===r.startDate&&n.endDate===r.endDate));state.gsc.push(...reports);state.gsc=state.gsc.slice(-24);
  state.growth||={};state.growth.reports=detailed;
  state.growth.syncedAt=new Date().toISOString();
+ state.googleDays=Number(days);
  return [...reports,...detailed].some(r=>r.truncated)?"Tüm ülkeler ve ABD raporları getirildi. Bazı raporlarda satır sınırına ulaşıldı; kısıtlama panelde gösterilir.":"Tüm ülkeler ve ABD için Google raporları getirildi.";
 }
 

@@ -10,3 +10,10 @@ test('scope selection cannot mix country, property, periods or page totals',()=>
  assert.equal(selectSearchReports(rows,'sc-domain:missing.com').total,null);
  assert.equal(searchMetrics(null),null);assert.deepEqual(searchMetrics(report({rows:[]})),{clicks:0,impressions:0,ctr:0,position:null});
 });
+
+test('a selected date window does not fall back to cached reports of another length',()=>{
+ const rows=[report(),report({startDate:'2026-08-22'})];
+ assert.equal(selectSearchReports(rows,'sc-domain:example.com','all','current',7).total.startDate,'2026-08-22');
+ assert.equal(selectSearchReports(rows,'sc-domain:example.com','all','current',28).total.startDate,'2026-08-01');
+ assert.equal(selectSearchReports(rows,'sc-domain:example.com','all','current',90).total,null);
+});

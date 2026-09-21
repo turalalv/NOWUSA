@@ -37,7 +37,7 @@ export function dashboardData(workspace, changes = []) {
   const pages = audit(workspace.catalog.pages,workspace.mappings).map(p=>({...p,suggestion:suggestion(p,workspace.catalog.shop.name)}));
   const reports = [...workspace.gsc].sort((a,b)=>b.endDate.localeCompare(a.endDate)||b.importedAt.localeCompare(a.importedAt));
   const current = reports[0], prior = current && reports.find(r=>r.source===current.source && (r.country||'unknown')===(current.country||'unknown') && (r.device||'unknown')===(current.device||'unknown') && (r.searchType||'unknown')===(current.searchType||'unknown') && r.property===current.property && r.grain===current.grain && r.endDate<current.startDate && Date.parse(r.endDate)-Date.parse(r.startDate)===Date.parse(current.endDate)-Date.parse(current.startDate));
-  return { googleReports:[...workspace.gsc,...(workspace.growth?.reports||[])].filter(r=>r.source==='google-api'),growth:growthData(workspace,changes),backlinks:workspace.backlinks||[],backlinksAuto:workspace.backlinksAuto||false,opportunities:backlinkOpportunities(pages),catalog:{...workspace.catalog,pages},drafts:Object.values(workspace.drafts).map(d=>({...d,afterHash:fingerprint(d.after),stale:!pages.some(p=>p.id===d.pageId&&fingerprint(p.seo)===d.beforeHash)})),imageDrafts:Object.values(workspace.imageDrafts||{}),technical:workspace.technical||null,mappings:workspace.mappings,links:internalLinks(pages),gsc:summarizeGSC(current,prior),snapshots:workspace.snapshots,changes:changes.map(c=>({...c,before:JSON.parse(c.before),after:JSON.parse(c.after),createdAt:c.createdAt.toISOString()})) };
+  return { googleDays:workspace.googleDays||28,googleReports:[...workspace.gsc,...(workspace.growth?.reports||[])].filter(r=>r.source==='google-api'),growth:growthData(workspace,changes),backlinks:workspace.backlinks||[],backlinksAuto:workspace.backlinksAuto||false,opportunities:backlinkOpportunities(pages),catalog:{...workspace.catalog,pages},drafts:Object.values(workspace.drafts).map(d=>({...d,afterHash:fingerprint(d.after),stale:!pages.some(p=>p.id===d.pageId&&fingerprint(p.seo)===d.beforeHash)})),imageDrafts:Object.values(workspace.imageDrafts||{}),technical:workspace.technical||null,mappings:workspace.mappings,links:internalLinks(pages),gsc:summarizeGSC(current,prior),snapshots:workspace.snapshots,changes:changes.map(c=>({...c,before:JSON.parse(c.before),after:JSON.parse(c.after),createdAt:c.createdAt.toISOString()})) };
 }
 function snapshot(state) {
   const pages = audit(state.catalog.pages,state.mappings);
@@ -90,7 +90,7 @@ export async function performOperation({db,shop,admin,input}) {
       case 'growth-task':setTaskDone(state,input);message="Haftalık görev güncellendi.";break;
       case 'growth-outreach':saveOutreach(state,input);message="İletişim metni taslak olarak kaydedildi. Kimseye gönderilmedi.";break;
 
-      case 'google-sync':message=await syncGoogle(db,shop,state);break;
+      case 'google-sync':message=await syncGoogle(db,shop,state,undefined,input.days===undefined?(state.googleDays||28):Number(input.days));break;
       case 'google-disconnect':message=await disconnectGoogle(db,shop);break;
       case 'google-settings':{
         const row=await db.googleConnection.findUnique({where:{shop}});

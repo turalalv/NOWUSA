@@ -47,3 +47,14 @@ test('Google refresh separates global and USA totals and details for both period
  const state={gsc:[{source:'old'}]};await syncGoogle(db,shop,state,factory);assert.equal(calls.length,16);assert.equal(state.growth.reports.length,12);assert.equal(state.gsc.filter(r=>r.country==='all').length,2);assert.equal(state.growth.reports.filter(r=>r.grain==='property'&&!r.truncated).length,4);assert.equal(state.growth.reports[0].rows[0].query,'example');assert.equal(state.growth.reports[1].rows[0].date,calls[2].startDate);assert.equal(state.gsc[0].source,'old');
  const snapshot=structuredClone(state);calls.length=0;fail=true;await assert.rejects(syncGoogle(db,shop,state,factory));assert.deepEqual(state,snapshot);
 });
+
+test('Google periods use inclusive 7, 28 and 90 day windows with adjacent comparisons',()=>{
+ for(const days of [7,28,90]){
+  const [[start,end],[previousStart,previousEnd]]=dateRange(new Date('2026-03-03T12:00:00Z'),days);
+  assert.equal((Date.parse(end)-Date.parse(start))/86400000+1,days);
+  assert.equal((Date.parse(previousEnd)-Date.parse(previousStart))/86400000+1,days);
+  assert.equal(Date.parse(start)-Date.parse(previousEnd),86400000);
+  assert.equal(end,'2026-02-28');
+ }
+ for(const days of [0,8,NaN,365])assert.throws(()=>dateRange(new Date(),days));
+});

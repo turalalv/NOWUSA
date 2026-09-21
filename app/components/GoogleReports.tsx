@@ -1,17 +1,19 @@
 import {useState} from 'react';
-import type {Dashboard,SearchReport} from '../lib/types';
+import type {Dashboard,SearchReport,ActionInput} from '../lib/types';
 import {selectSearchReports,searchMetrics} from '../lib/search-reports.mjs';
 const number=(n:number,digits=0)=>n.toLocaleString('tr-TR',{maximumFractionDigits:digits});
-export default function GoogleReports({data}:{data:Dashboard}){
+export default function GoogleReports({data,busy,onAction}:{data:Dashboard;busy:boolean;onAction:(input:ActionInput)=>void}){
  const [country,setCountry]=useState('all'),[period,setPeriod]=useState('current'),[grain,setGrain]=useState('pages'),[limit,setLimit]=useState(50);
- const reports=selectSearchReports(data.googleReports||[],data.google?.property,country,period);
+ const days=data.googleDays||28;
+ const reports=selectSearchReports(data.googleReports||[],data.google?.property,country,period,days);
  const total=reports.total,metrics=searchMetrics(total);
  const detail=grain==='queries'?reports.queries:grain==='daily'?reports.daily:reports.pages;
  const rows:SearchReport['rows']=detail?.rows||[];
  return <>
   <s-section heading="Google arama performansı"><div className="seo-form-grid">
+   <s-select label="Tarih aralığı" value={String(days)} disabled={busy||!data.google?.connected} onChange={e=>{setPeriod('current');setLimit(50);onAction({intent:'google-sync',days:e.currentTarget.value});}}><s-option value="7">Son 7 gün</s-option><s-option value="28">Son 28 gün</s-option><s-option value="90">Son 3 ay (90 gün)</s-option></s-select>
    <s-select label="Ülke" value={country} onChange={e=>{setCountry(e.currentTarget.value);setLimit(50);}}><s-option value="all">Tüm ülkeler</s-option><s-option value="usa">ABD</s-option></s-select>
-   <s-select label="Dönem" value={period} onChange={e=>{setPeriod(e.currentTarget.value);setLimit(50);}}><s-option value="current">Son tamamlanan 28 gün</s-option><s-option value="previous">Önceki 28 gün</s-option></s-select>
+   <s-select label="Dönem" value={period} onChange={e=>{setPeriod(e.currentTarget.value);setLimit(50);}}><s-option value="current">Seçilen tarih aralığı</s-option><s-option value="previous">Önceki aynı uzunluktaki dönem</s-option></s-select>
   </div><s-paragraph>Web araması · tüm cihazlar · {country==='usa'?'yalnızca ABD':'tüm ülkeler'}. Kesinleşmiş veriler için son 3 gün dahil edilmez.</s-paragraph></s-section>
   {metrics&&total?<><div className="seo-metrics">{[['Tıklama',number(metrics.clicks)],['Gösterim',number(metrics.impressions)],['CTR',`%${number(metrics.ctr*100,2)}`],['Ortalama konum',metrics.position===null?'—':number(metrics.position,1)]].map(([label,value])=><s-section key={label}><div className="seo-metric"><span>{label}</span><strong>{value}</strong><small>Search Console site toplamı</small></div></s-section>)}</div>
   <s-banner tone="info">{total.property} · {total.startDate} — {total.endDate}<br/>Google API’den alındı. Son yenileme: {new Date(total.importedAt).toLocaleString('tr-TR')}. Satır detayları ile site toplamları, Google’ın gruplama ve gizlilik kuralları nedeniyle farklı olabilir.</s-banner></>:<s-section><s-paragraph>Bu seçim için site toplamı henüz getirilmedi. Google hesabınızı bağlayıp “Google raporunu getir” düğmesine basın. Eksik rapor sıfır olarak gösterilmez.</s-paragraph></s-section>}
