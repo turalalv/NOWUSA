@@ -1,3 +1,4 @@
+import {shopifyBoundaryError} from '../lib/shopify-boundary';
 import CompetitorPanel from '../components/CompetitorPanel';
 import {useFetcher, useLoaderData, useRouteError} from 'react-router';
 import type {HeadersFunction, LoaderFunctionArgs} from 'react-router';
@@ -23,5 +24,5 @@ export default function Competitors() {
   const fetcher = useFetcher<ActionResult>();
   return <CompetitorPanel data={data} busy={fetcher.state !== 'idle'} result={fetcher.data} onImport={json=>fetcher.submit({intent:'competitor-import',json},{method:'POST',encType:'application/json'})} />;
 }
-export function ErrorBoundary() {return boundary.error(useRouteError());}
+export function ErrorBoundary() {return shopifyBoundaryError(useRouteError());}
 export const headers:HeadersFunction = args=>{const result=new Headers(boundary.headers(args));result.set('Cache-Control','private, no-store');return result;};

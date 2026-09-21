@@ -1,3 +1,4 @@
+import {shopifyBoundaryError} from '../lib/shopify-boundary';
 import { useEffect } from 'react';
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from 'react-router';
 import { useFetcher, useLoaderData, useRouteError } from 'react-router';
@@ -60,5 +61,5 @@ export default function Index() {
   }, [fetcher.data, bridge]);
   return <SeoDashboard data={data} busy={fetcher.state !== 'idle'} result={fetcher.data} onAction={input => fetcher.submit(input, { method: 'POST', encType: 'application/json' })} />;
 }
-export function ErrorBoundary() { return boundary.error(useRouteError()); }
+export function ErrorBoundary() { return shopifyBoundaryError(useRouteError()); }
 export const headers: HeadersFunction = args => {const headers=new Headers(boundary.headers(args));headers.set('Cache-Control','private, no-store');return headers;};

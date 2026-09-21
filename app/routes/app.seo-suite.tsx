@@ -1,3 +1,4 @@
+import {shopifyBoundaryError} from '../lib/shopify-boundary';
 import {useEffect} from 'react';
 import {useFetcher,useLoaderData,useRouteError} from 'react-router';
 import type {ActionFunctionArgs,HeadersFunction,LoaderFunctionArgs} from 'react-router';
@@ -19,5 +20,5 @@ export const action=async({request}:ActionFunctionArgs)=>{
  }catch(error){if(error instanceof Response)throw error;return Response.json({error:error instanceof Error?error.message:'İşlem başarısız.'},{status:400});}
 };
 export default function SeoSuite(){const data=useLoaderData<typeof loader>(),fetcher=useFetcher<ActionResult>();useEffect(()=>{if(!fetcher.data?.download)return;const url=URL.createObjectURL(new Blob([fetcher.data.download],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=fetcher.data.filename||'seo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},[fetcher.data]);return <SeoSuitePanel data={data.suite} canManage={data.canManage} busy={fetcher.state!=='idle'} result={fetcher.data} onAction={input=>fetcher.submit(input,{method:'POST',encType:'application/json'})}/>;}
-export function ErrorBoundary(){return boundary.error(useRouteError());}
+export function ErrorBoundary(){return shopifyBoundaryError(useRouteError());}
 export const headers:HeadersFunction=args=>{const h=new Headers(boundary.headers(args));h.set('Cache-Control','private, no-store');return h;};
