@@ -37,6 +37,10 @@ Node 22.12+ or Node 24, npm and Shopify CLI are required. Use Shopify Dev Dashbo
 
 The current deployment uses Render + Neon and the live URLs in `shopify.app.toml`. An alternative SQLite deployment can use the Dockerfile on an HTTPS host with a persistent volume at `/data`; container startup runs migrations. Use one application instance with SQLite and back up the volume. Multiple replicas require a shared database and migration/locking changes. Protect backups as they include Shopify sessions.
 
+## Turkish dashboard
+
+The interface and application messages use Turkish (`tr-TR`). The compact overview uses real catalog values with Chart.js, an icon sidebar and collapsible findings. Missing Search Console data is shown as an empty state. Run `node scripts/preview-dashboard.mjs` for a local preview with explicitly labeled sample data at `http://localhost:4173`. See `design-qa.md` for browser checks.
+
 ## Enable Google, compression and daily checks
 
 1. Generate **INTEGRATION_ENCRYPTION_KEY** once as 64 random hex characters (see `.env.example`). Store it in the host's secret manager and back it up separately. It encrypts Google tokens and signs short-lived image delivery URLs. Changing it invalidates existing Google connections and signed image URLs.

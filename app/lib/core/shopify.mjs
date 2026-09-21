@@ -2,16 +2,16 @@ import { plain } from './seo.mjs';
 export const API_VERSION = '2026-07';
 export function storeHost(value) {
   const host = String(value || '').trim().replace(/^https:\/\//, '').replace(/\/$/, '').toLowerCase();
-  if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(host)) throw new Error('Mağazanın xxx.myshopify.com ünvanını daxil edin.');
+  if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(host)) throw new Error("Mağazanın xxx.myshopify.com adresini girin.");
   return host;
 }
 export async function request(url, options = {}) {
   let response;
   try { response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(30000) }); }
-  catch { throw new Error('Şəbəkə bağlantısı alınmadı. İnternet bağlantısını və mağaza ünvanını yoxlayın.'); }
-  if (!response.ok) throw new Error(`Mənbə HTTP ${response.status} qaytardı. Giriş icazəsini və ünvanı yoxlayın.`);
+  catch { throw new Error("Ağ bağlantısı kurulamadı. İnternet bağlantısını ve mağaza adresini kontrol edin."); }
+  if (!response.ok) throw new Error(`Kaynak HTTP ${response.status} döndürdü. Erişim iznini ve adresi kontrol edin.`);
   const text = await response.text();
-  if (text.length > 12_000_000) throw new Error('Cavab həddən artıq böyükdür.');
+  if (text.length > 12_000_000) throw new Error("Yanıt çok büyük.");
   return text;
 }
 export class Shopify {
@@ -19,11 +19,11 @@ export class Shopify {
   async token() {
     if (this.config.SHOPIFY_ACCESS_TOKEN) return this.config.SHOPIFY_ACCESS_TOKEN;
     if (this.cached && Date.now() < this.expiresAt) return this.cached;
-    if (!this.config.SHOPIFY_CLIENT_ID || !this.config.SHOPIFY_CLIENT_SECRET) throw new Error('Shopify API açarı əlavə olunmayıb. Bağlantılar bölməsini açın.');
+    if (!this.config.SHOPIFY_CLIENT_ID || !this.config.SHOPIFY_CLIENT_SECRET) throw new Error("Shopify API anahtarı eklenmedi. Bağlantılar bölümünü açın.");
     const result = JSON.parse(await request(`https://${this.host}/admin/oauth/access_token`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: this.config.SHOPIFY_CLIENT_ID, client_secret: this.config.SHOPIFY_CLIENT_SECRET })
     }));
-    if (!result.access_token) throw new Error('Shopify giriş açarı alınmadı.');
+    if (!result.access_token) throw new Error("Shopify erişim anahtarı alınamadı.");
     this.cached = result.access_token; this.expiresAt = Date.now() + (result.expires_in || 3600) * 1000 - 60000;
     return this.cached;
   }
@@ -32,8 +32,8 @@ export class Shopify {
     const result = JSON.parse(await request(`https://${this.host}/admin/api/${API_VERSION}/graphql.json`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-shopify-access-token': token }, body: JSON.stringify({ query, variables })
     }));
-    if (result.errors?.length) throw new Error('Shopify sorğusu alınmadı. API icazələrini və 2026-07 versiyasını yoxlayın.');
-    if (!result.data) throw new Error('Shopify məlumat qaytarmadı.');
+    if (result.errors?.length) throw new Error("Shopify isteği başarısız oldu. API izinlerini ve 2026-07 sürümünü kontrol edin.");
+    if (!result.data) throw new Error("Shopify veri döndürmedi.");
     return result.data;
   }
   async identity() { return (await this.query('{ shop { name myshopifyDomain primaryDomain { url } } }')).shop; }
@@ -47,22 +47,22 @@ export class Shopify {
         const connection = data[`${type}s`];
         pages.push(...connection.nodes.map(p => ({ ...p, type, source: 'shopify', images: p.media?.nodes?.filter(m=>m.id&&m.image).map(m=>({id:m.id,url:m.image.url,altText:m.alt||''})) || (p.image ? [p.image] : []), imagesTruncated: p.media?.pageInfo?.hasNextPage || false, url: type==='collection'?`${shop.primaryDomain.url.replace(/\/$/,'')}/collections/${encodeURIComponent(p.handle)}`:p.onlineStoreUrl || '', tags: p.tags || [], status: p.status || 'UNKNOWN' })));
         more = connection.pageInfo.hasNextPage; after = connection.pageInfo.endCursor;
-        if (pages.length >= 5000 && more) throw new Error('5000 səhifə limiti keçildi. Kataloq saxlanmadı; böyük mağaza üçün bulk import tələb olunur.');
+        if (pages.length >= 5000 && more) throw new Error("5000 sayfa sınırı aşıldı. Katalog kaydedilmedi; büyük mağazalar için toplu içe aktarma gereklidir.");
       }
     }
-    return { shop: { name: shop.name, domain: shop.primaryDomain.url, adminDomain: shop.myshopifyDomain }, pages, source: 'shopify', syncedAt: new Date().toISOString(), warnings: ['Kolleksiya URL-ləri handle əsasında hesablanıb. Onların açıq olub-olmadığını Texniki SEO bölməsində yoxlayın.'] };
+    return { shop: { name: shop.name, domain: shop.primaryDomain.url, adminDomain: shop.myshopifyDomain }, pages, source: 'shopify', syncedAt: new Date().toISOString(), warnings: ["Koleksiyon URL’leri, URL tanıtıcısına göre hesaplandı. Açık olup olmadıklarını Teknik SEO bölümünde kontrol edin."] };
   }
   async readSEO(id, type) {
     const data = await this.query(`query Current($id: ID!) { node(id: $id) { ... on ${type === 'product' ? 'Product' : 'Collection'} { id updatedAt seo { title description } } } }`, { id });
-    if (!data.node) throw new Error('Səhifə Shopify-da tapılmadı.');
+    if (!data.node) throw new Error("Sayfa Shopify’da bulunamadı.");
     return data.node;
   }
   async updateSEO(page, seo) {
     const product = page.type === 'product';
     const operation = product ? 'productUpdate' : 'collectionUpdate', inputType = product ? 'ProductUpdateInput' : 'CollectionInput', argument = product ? 'product' : 'input', resource = product ? 'product' : 'collection';
     const result = (await this.query(`mutation SEO($input: ${inputType}!) { ${operation}(${argument}: $input) { ${resource} { id updatedAt seo { title description } } userErrors { field message } } }`, { input: { id: page.id, seo } }))[operation];
-    if (result.userErrors?.length) throw new Error(`Shopify düzəlişi qəbul etmədi: ${result.userErrors.map(e => e.message).join('; ')}`);
-    if (!result[resource]) throw new Error('Shopify yenilənmiş səhifəni qaytarmadı.');
+    if (result.userErrors?.length) throw new Error(`Shopify düzenlemeyi kabul etmedi: ${result.userErrors.map(e => e.message).join('; ')}`);
+    if (!result[resource]) throw new Error("Shopify güncellenen sayfayı döndürmedi.");
     return result[resource];
   }
 }
@@ -86,18 +86,18 @@ export async function publicCatalog() {
   const domain = 'https://nosweatusa.com', pages = [], warnings = [];
   for (let page = 1; page <= 20; page++) {
     const data = JSON.parse(await request(`${domain}/products.json?limit=250&page=${page}`));
-    if (!Array.isArray(data.products)) throw new Error('Mağaza açıq məhsul kataloqu qaytarmadı. CSV idxalını istifadə edin.');
+    if (!Array.isArray(data.products)) throw new Error("Mağaza, herkese açık ürün kataloğunu döndürmedi. CSV içe aktarmayı kullanın.");
     for (const p of data.products) pages.push({ id: `public:product:${p.id}`, type: 'product', source: 'public', title: p.title, handle: p.handle, descriptionHtml: p.body_html || '', seo: { title: '', description: '' }, images: (p.images || []).map(im => ({ url: im.src, altText: im.alt || '' })), tags: Array.isArray(p.tags) ? p.tags : String(p.tags || '').split(',').filter(Boolean), status: 'ACTIVE', url: `${domain}/products/${p.handle}` });
     if (data.products.length < 250) break;
-    if (page === 20) throw new Error('Açıq kataloq 5000 məhsul limitini keçdi.');
+    if (page === 20) throw new Error("Herkese açık katalog, 5000 ürün sınırını aştı.");
   }
   try {
     const data = JSON.parse(await request(`${domain}/collections.json?limit=250`));
-    if (data.collections?.length === 250) warnings.push('Kolleksiya idxalı ilk 250 nəticə ilə məhdudlaşıb. Tam kataloq üçün Shopify API bağlantısı istifadə edin.');
+    if (data.collections?.length === 250) warnings.push("Koleksiyon içe aktarma, ilk 250 sonuçla sınırlıdır. Tam katalog için Shopify API bağlantısını kullanın.");
     for (const c of data.collections || []) pages.push({ id: `public:collection:${c.id}`, type: 'collection', source: 'public', title: c.title, handle: c.handle, descriptionHtml: c.body_html || c.description || '', seo: { title: '', description: '' }, images: c.image ? [{ url: c.image.src, altText: c.image.alt || '' }] : [], tags: [], status: 'PUBLISHED', url: `${domain}/collections/${c.handle}` });
-  } catch { warnings.push('Açıq kolleksiya kataloqu alınmadı. Kolleksiyalar üçün Shopify API bağlantısı istifadə edin.'); }
-  if (!pages.length) throw new Error('Açıq kataloqda məhsul tapılmadı. CSV idxalı və ya Shopify bağlantısı istifadə edin.');
-  if (pages.length > 100) warnings.push('HTML yoxlaması ilk 100 səhifə ilə məhduddur; qalanlarında meta məlumat yoxlanmayıb.');
+  } catch { warnings.push("Herkese açık koleksiyon kataloğu alınamadı. Koleksiyonlar için Shopify API bağlantısını kullanın."); }
+  if (!pages.length) throw new Error("Herkese açık katalogda ürün bulunamadı. CSV içe aktarmayı veya Shopify bağlantısını kullanın.");
+  if (pages.length > 100) warnings.push("HTML kontrolü ilk 100 sayfayla sınırlıdır; kalan sayfalarda meta veriler kontrol edilmedi.");
   for (let i = 0; i < pages.length; i += 4) {
     await Promise.all(pages.slice(i, Math.min(i + 4, 100)).map(async p => {
       try {
@@ -109,7 +109,7 @@ export async function publicCatalog() {
         });
         p.seo = { title: inspected.title, description: inspected.description }; p.technical = inspected; delete p.technical.images;
         p.metaVerified = true;
-      } catch { p.metaVerified = false; warnings.push(`${p.title}: HTML alınmadı; meta yoxlamaları aparılmadı.`); }
+      } catch { p.metaVerified = false; warnings.push(`${p.title}: HTML alınamadı; meta kontrolleri yapılmadı.`); }
     }));
     if (i >= 100) break;
   }

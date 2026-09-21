@@ -2,26 +2,26 @@ const allowed = new Set(['sweatblock.com', 'certaindri.com']);
 const text = (value, max = 1000) => typeof value === 'string' ? value.slice(0, max) : '';
 
 export function importCompetitor(state, raw) {
-  if (typeof raw !== 'string' || Buffer.byteLength(raw) > 2_500_000) throw new Error('JSON faylı maksimum 2.5 MB olmalıdır.');
+  if (typeof raw !== 'string' || Buffer.byteLength(raw) > 2_500_000) throw new Error("JSON dosyası en fazla 2,5 MB olmalıdır.");
   let rows;
-  try { rows = JSON.parse(raw); } catch { throw new Error('Düzgün pages.json faylı seçin.'); }
-  if (!Array.isArray(rows) || !rows.length || rows.length > 500) throw new Error('Faylda 1–500 səhifə olmalıdır.');
+  try { rows = JSON.parse(raw); } catch { throw new Error("Geçerli bir pages.json dosyası seçin."); }
+  if (!Array.isArray(rows) || !rows.length || rows.length > 500) throw new Error("Dosyada 1–500 sayfa olmalıdır.");
   let domain;
   const seen = new Set();
   const pages = rows.map(row => {
-    if (!row || typeof row !== 'object') throw new Error('Səhifə məlumatı düzgün deyil.');
+    if (!row || typeof row !== 'object') throw new Error("Sayfa bilgileri geçerli değil.");
     let url;
-    try { url = new URL(row.url); } catch { throw new Error('Səhifə URL-i düzgün deyil.'); }
+    try { url = new URL(row.url); } catch { throw new Error("Sayfa URL’si geçerli değil."); }
     const host = url.hostname.replace(/^www\./, '');
-    if (!allowed.has(host) || url.protocol !== 'https:' || url.username || url.password || url.port) throw new Error('Yalnız SweatBlock və Certain Dri HTTPS səhifələri qəbul edilir.');
-    if (domain && domain !== host) throw new Error('Hər dəfə yalnız bir saytın pages.json faylını import edin.');
+    if (!allowed.has(host) || url.protocol !== 'https:' || url.username || url.password || url.port) throw new Error("Yalnızca SweatBlock ve Certain Dri HTTPS sayfaları kabul edilir.");
+    if (domain && domain !== host) throw new Error("Her seferinde yalnızca bir sitenin pages.json dosyasını içe aktarın.");
     domain = host;
     url.hostname = host; url.hash = '';
-    if (seen.has(url.href)) throw new Error('Faylda təkrarlanan səhifə URL-i var.');
+    if (seen.has(url.href)) throw new Error("Dosyada yinelenen sayfa URL’si var.");
     seen.add(url.href);
-    if (row.status !== 200 || !Array.isArray(row.extracted_keywords)) throw new Error('Scraper-in uğurlu səhifə nəticələri tələb olunur.');
+    if (row.status !== 200 || !Array.isArray(row.extracted_keywords)) throw new Error("Tarayıcının başarılı sayfa sonuçları gereklidir.");
     const keywords = row.extracted_keywords.slice(0, 100).map(k => {
-      if (!k || typeof k.keyword !== 'string' || !k.keyword.trim() || !Number.isSafeInteger(k.count) || k.count < 1) throw new Error('Açar söz məlumatı düzgün deyil.');
+      if (!k || typeof k.keyword !== 'string' || !k.keyword.trim() || !Number.isSafeInteger(k.count) || k.count < 1) throw new Error("Anahtar kelime bilgileri geçerli değil.");
       return {keyword: k.keyword.trim().toLowerCase().slice(0, 160), count: k.count};
     });
     const internalLinks = Array.isArray(row.internal_links) ? [...new Set(row.internal_links.filter(link=>{

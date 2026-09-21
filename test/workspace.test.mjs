@@ -26,9 +26,9 @@ test('drafts require exact review and current Shopify values; empty original SEO
  const {db,run,get,live,writes}=await fixture(t);
  await run({intent:'save-draft',pageId:'p1',title:'Reviewed title',description:'Reviewed description'});
  const draft=(await get()).drafts.p1;assert.equal(writes.length,0);
- await assert.rejects(run({intent:'apply',pageId:'p1',confirm:'APPLY',draftHash:'old'}),/başqa pəncərədə/);
+ await assert.rejects(run({intent:'apply',pageId:'p1',confirm:'APPLY',draftHash:'old'}),/başka bir pencerede/);
  live.get('p1').seo.title='Edited outside';
- await assert.rejects(run({intent:'apply',pageId:'p1',confirm:'APPLY',draftHash:fingerprint(draft.after)}),/Shopify-da dəyişib/);
+ await assert.rejects(run({intent:'apply',pageId:'p1',confirm:'APPLY',draftHash:fingerprint(draft.after)}),/Shopify’da değişti/);
  assert.equal(writes.length,0);live.get('p1').seo.title='';
  await run({intent:'apply',pageId:'p1',confirm:'APPLY',draftHash:fingerprint(draft.after)});
  assert.equal(writes.length,1);assert.equal((await get()).drafts.p1,undefined);
@@ -47,10 +47,10 @@ test('bulk application preserves completed writes and stops on stale source',asy
 });
 test('image edits reject unknown IDs, require exact reviewed alt and keep a history',async t=>{
  const {run,get,writes,db}=await fixture(t);
- await assert.rejects(run({intent:'image-draft',imageId:'unknown',alt:'text'}),/tapılmadı/);
+ await assert.rejects(run({intent:'image-draft',imageId:'unknown',alt:'text'}),/bulunamadı/);
  const imageId='gid://shopify/MediaImage/1';
  await run({intent:'image-draft',imageId,alt:'Bag shown from front'});
- await assert.rejects(run({intent:'image-apply',imageId,confirm:'APPLY',alt:'different'}),/dəyişib/);assert.equal(writes.length,0);
+ await assert.rejects(run({intent:'image-apply',imageId,confirm:'APPLY',alt:'different'}),/değişti/);assert.equal(writes.length,0);
  await run({intent:'image-apply',imageId,confirm:'APPLY',alt:'Bag shown from front'});
  assert.equal((await get()).catalog.pages[1].images[0].altText,'Bag shown from front');
  assert.equal((await db.seoChange.findFirst()).status,'applied');
@@ -58,7 +58,7 @@ test('image edits reject unknown IDs, require exact reviewed alt and keep a hist
 test('per-shop lock blocks concurrent mutations and is released after failure',async t=>{
  const {db,run}=await fixture(t);
  await db.seoWorkspace.update({where:{shop},data:{lockToken:'other',lockUntil:new Date(Date.now()+60000)}});
- await assert.rejects(run({intent:'keyword',pageId:'p1',keyword:'cat litter'}),/davam edir/);
+ await assert.rejects(run({intent:'keyword',pageId:'p1',keyword:'cat litter'}),/devam ediyor/);
  await db.seoWorkspace.update({where:{shop},data:{lockUntil:null}});
  await assert.rejects(run({intent:'unknown'}));
  assert.equal((await db.seoWorkspace.findUniqueOrThrow({where:{shop}})).lockToken,null);

@@ -1,3 +1,4 @@
+import process from 'node:process';
 // Call only after authenticate.admin and assertAllowedShop. Entries are shop:userId.
 export function canManageGoogle(session, delegates = process.env.GOOGLE_MANAGER_USERS || '') {
   const user = session?.onlineAccessInfo?.associated_user;

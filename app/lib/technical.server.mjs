@@ -10,20 +10,20 @@ export function storefrontURL(value, base='https://nosweatusa.com') {
   }catch{return null;}
 }
 export async function fetchPage(input, {head=false, fetcher=fetch}={}) {
-  let url=storefrontURL(input);if(!url)throw new Error('Yalnız No Sweat USA-nın açıq səhifələri yoxlanır.');
+  let url=storefrontURL(input);if(!url)throw new Error("Yalnızca No Sweat USA’nın herkese açık sayfaları kontrol edilir.");
   const signal=AbortSignal.timeout(8000);
   for(let i=0;i<5;i++){
     const response=await fetcher(url,{method:head?'HEAD':'GET',redirect:'manual',signal,headers:{'user-agent':'NoSweatSEO/1.0 (owner-requested audit)'}});
     if([301,302,303,307,308].includes(response.status)){
       const next=storefrontURL(response.headers.get('location')||'',url);
-      await response.body?.cancel();if(!next)throw new Error('Başqa domenə və ya bağlı yola yönləndirmə izlənmədi.');url=next;continue;
+      await response.body?.cancel();if(!next)throw new Error("Başka alan adına veya kapalı yola yönlendirme takip edilmedi.");url=next;continue;
     }
     if(head){await response.body?.cancel();return {url,status:response.status,html:''};}
     const chunks=[];let bytes=0;
-    if(response.body)for await(const chunk of response.body){bytes+=chunk.length;if(bytes>2_500_000){throw new Error('HTML 2.5 MB yoxlama limitini keçir.');}chunks.push(chunk);}
+    if(response.body)for await(const chunk of response.body){bytes+=chunk.length;if(bytes>2_500_000){throw new Error("HTML, 2,5 MB kontrol sınırını aşıyor.");}chunks.push(chunk);}
     return {url,status:response.status,html:Buffer.concat(chunks).toString('utf8')};
   }
-  throw new Error('Yönləndirmə limiti keçildi.');
+  throw new Error("Yönlendirme sınırı aşıldı.");
 }
 export function extractLinks(html,base) {
   const markup=html.replace(/<(script|style|template)\b[^>]*>[\s\S]*?<\/\1>/gi,'');
@@ -36,7 +36,7 @@ export function extractLinks(html,base) {
 export async function technicalAudit(pages,fetcher=fetch){
   const inspected=[],linkSources=new Map(),warnings=[];
   const selected=pages.filter(p=>p.url&&storefrontURL(p.url)).slice(0,30);
-  if(pages.filter(p=>p.url).length>30)warnings.push('Texniki audit ilk 30 yayımlanmış səhifəni əhatə edir.');
+  if(pages.filter(p=>p.url).length>30)warnings.push("Teknik denetim, yayınlanmış ilk 30 sayfayı kapsar.");
   for(let offset=0;offset<selected.length;offset+=3){await Promise.all(selected.slice(offset,offset+3).map(async p=>{
     try{
       const r=await fetchPage(p.url,{fetcher}), html=r.status===200?inspectHTML(r.html):null;
@@ -46,7 +46,7 @@ export async function technicalAudit(pages,fetcher=fetch){
   }));}
   const already=new Map(inspected.filter(p=>p.status).map(p=>[storefrontURL(p.url),p.status]));
   const links=[];const urls=[...linkSources.keys()].slice(0,60);
-  if(linkSources.size>60)warnings.push(`${linkSources.size} unikal daxili linkdən ilk 60-ı yoxlanıb.`);
+  if(linkSources.size>60)warnings.push(`${linkSources.size} benzersiz dahili bağlantının ilk 60’ı kontrol edildi.`);
   for(let offset=0;offset<urls.length;offset+=5){await Promise.all(urls.slice(offset,offset+5).map(async url=>{
     try{let status=already.get(url);if(!status){let r=await fetchPage(url,{head:true,fetcher});if(r.status===405)r=await fetchPage(url,{fetcher});status=r.status;}links.push({url,status,broken:[404,410].includes(status),sources:[...new Set(linkSources.get(url))]});}
     catch(error){links.push({url,status:null,broken:false,error:error.message,sources:[...new Set(linkSources.get(url))]});}

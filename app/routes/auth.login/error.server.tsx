@@ -7,9 +7,9 @@ interface LoginErrorMessage {
 
 export function loginErrorMessage(loginErrors: LoginError): LoginErrorMessage {
   if (loginErrors?.shop === LoginErrorType.MissingShop) {
-    return { shop: "Please enter your shop domain to log in" };
+    return { shop: "Giriş yapmak için mağaza alan adınızı girin" };
   } else if (loginErrors?.shop === LoginErrorType.InvalidShop) {
-    return { shop: "Please enter a valid shop domain to log in" };
+    return { shop: "Giriş yapmak için geçerli bir mağaza alan adı girin" };
   }
 
   return {};

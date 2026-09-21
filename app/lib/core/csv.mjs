@@ -15,11 +15,11 @@ export function parseCSV(text) {
       row = []; value = '';
     } else value += c;
   }
-  if (quoted) throw new Error('CSV-də bağlanmamış dırnaq var. Faylı yenidən ixrac edin.');
+  if (quoted) throw new Error("CSV dosyasında kapatılmamış tırnak var. Dosyayı yeniden dışa aktarın.");
   row.push(value); if (row.some(v => v.trim())) rows.push(row);
-  if (rows.length < 2) throw new Error('CSV-də başlıq və ən azı bir məlumat sətri olmalıdır.');
+  if (rows.length < 2) throw new Error("CSV dosyasında başlık ve en az bir veri satırı olmalıdır.");
   const headers = rows.shift().map(v => v.trim());
-  if (new Set(headers.map(h => h.toLowerCase())).size !== headers.length) throw new Error('CSV sütun adları təkrarlanır.');
+  if (new Set(headers.map(h => h.toLowerCase())).size !== headers.length) throw new Error("CSV sütun adları yineleniyor.");
   return rows.map(values => Object.fromEntries(headers.map((key, i) => [key, values[i] || ''])));
 }
 export function encodeCSV(rows) {
@@ -32,7 +32,7 @@ export function encodeCSV(rows) {
 }
 export function catalogFromCSV(csv, domain = '') {
   const rows = parseCSV(csv);
-  if (!('Handle' in rows[0]) || !('Title' in rows[0])) throw new Error('Shopify məhsul CSV-si lazımdır: Handle və Title sütunları tapılmadı.');
+  if (!('Handle' in rows[0]) || !('Title' in rows[0])) throw new Error("Shopify ürün CSV dosyası gerekli: Handle ve Title sütunları bulunamadı.");
   const products = new Map();
   for (const r of rows) {
     const handle = r.Handle.trim(); if (!handle) continue;
@@ -47,6 +47,6 @@ export function catalogFromCSV(csv, domain = '') {
     if (r['Image Src'] && !p.images.some(im => im.url === r['Image Src'])) p.images.push({ url: r['Image Src'], altText: r['Image Alt Text'] || '' });
   }
   const pages = [...products.values()].filter(p => p.title);
-  if (!pages.length) throw new Error('CSV-də başlığı olan məhsul tapılmadı.');
+  if (!pages.length) throw new Error("CSV dosyasında başlığı olan ürün bulunamadı.");
   return pages;
 }

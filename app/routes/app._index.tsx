@@ -21,7 +21,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const row = await ensureWorkspace(db, session.shop);
   const changes = await db.seoChange.findMany({ where: { shop: session.shop }, orderBy: { createdAt: 'desc' }, take: 50 });
   const data = dashboardData(JSON.parse(row.data), changes);
-  let compressionConfigured=false;try{key();compressionConfigured=true;}catch{}
+  let compressionConfigured=false;try{key();compressionConfigured=true;}catch{ /* Integration key has not been configured. */ }
   return { ...data, google:await googleStatus(db,session.shop),compressions:await compressionList(db,session.shop),compressionConfigured,canManageGoogle:canManageGoogle(session),canWrite: session.scope?.split(',').includes('write_products') || false, canWriteFiles: session.scope?.split(',').includes('write_files') || false } as Dashboard;
 };
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -29,21 +29,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   assertAllowedShop(session.shop);
   try {
     const text = await request.text();
-    if (text.length > 3_000_000) throw new Error('Sorğu ölçüsü 3 MB limitini keçir.');
+    if (text.length > 3_000_000) throw new Error("İstek boyutu 3 MB sınırını aşıyor.");
     const input = JSON.parse(text) as ActionInput;
-    if(['google-connect','google-disconnect','google-settings'].includes(input.intent)&&!canManageGoogle(session))throw new Error('Google bağlantısını idarə etmək üçün mağaza sahibi və ya ayrıca icazə verilmiş istifadəçi olmalısan.');
+    if(['google-connect','google-disconnect','google-settings'].includes(input.intent)&&!canManageGoogle(session))throw new Error("Google bağlantısını yönetmek için mağaza sahibi veya ayrıca yetkilendirilmiş bir kullanıcı olmalısınız.");
     if(input.intent==='google-connect')return {ok:true,connectURL:await prepareGoogle(db,session.shop)};
     if(input.intent==='refresh')return {ok:true};
     if (input.intent === 'export') {
       const row = await ensureWorkspace(db, session.shop);
       return { ok: true, download: exportAudit(JSON.parse(row.data)), filename: 'nosweat-seo-audit.csv' } satisfies ActionResult;
     }
-    if (['apply','bulk-apply'].includes(input.intent) && !session.scope?.split(',').includes('write_products')) throw new Error('Canlı dəyişiklik üçün write_products icazəsi lazımdır.');
-    if (['image-apply','compression-apply'].includes(input.intent) && !session.scope?.split(',').includes('write_files')) throw new Error('Şəkil dəyişikliyi üçün write_files icazəsi lazımdır.');
+    if (['apply','bulk-apply'].includes(input.intent) && !session.scope?.split(',').includes('write_products')) throw new Error("Canlı değişiklik için write_products izni gerekir.");
+    if (['image-apply','compression-apply'].includes(input.intent) && !session.scope?.split(',').includes('write_files')) throw new Error("Görsel değişikliği için write_files izni gerekir.");
     return await performOperation({ db, shop: session.shop, admin, input }) as ActionResult;
   } catch (error) {
     if (error instanceof Response) throw error;
-    return Response.json({ error: error instanceof Error ? error.message : 'Əməliyyat alınmadı.' }, { status: 400 });
+    return Response.json({ error: error instanceof Error ? error.message : "İşlem başarısız oldu." }, { status: 400 });
   }
 };
 export default function Index() {
