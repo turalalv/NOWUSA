@@ -22,7 +22,9 @@ export function organicRankings(suite) {
   for(const row of rows){if(!groups.has(row.url))groups.set(row.url,[]);groups.get(row.url).push(row);}
   const pages=[...groups].map(([url,items])=>({url,keywords:items.length,position:Math.min(...items.map(r=>r.position)),traffic:total(items,'traffic')})).sort((a,b)=>b.keywords-a.keywords);
   const meta=report?{...report}:null;if(meta){delete meta.rows;delete meta.lostRows;}
-  return {report:meta,previousDate:previous?.observedAt||null,rows,lostRows:(report?.lostRows||[]).map(r=>({...r,previous:before.get(r.keyword)?.position??null,change:null,status:'lost'})),pages,traffic:total(rows,'traffic'),trafficCost:total(rows,'trafficCost'),history:history.filter(r=>!report||(r.provider===report.provider&&r.device===report.device&&r.country===report.country&&r.language===report.language)).map(r=>({observedAt:r.observedAt,provider:r.provider,count:r.rows.filter(r=>r.position<=100).length,traffic:total(r.rows,'traffic'),device:r.device}))};
+  const previousRows=previous?.rows.filter(r=>r.position>=1&&r.position<=100);
+  const previousSummary=previousRows?{keywords:previousRows.length,traffic:total(previousRows,'traffic'),trafficCost:total(previousRows,'trafficCost'),top10:previousRows.filter(r=>r.position<=10).length}:null;
+  return {report:meta,previousDate:previous?.observedAt||null,previousSummary,rows,lostRows:(report?.lostRows||[]).map(r=>({...r,previous:before.get(r.keyword)?.position??null,change:null,status:'lost'})),pages,traffic:total(rows,'traffic'),trafficCost:total(rows,'trafficCost'),history:history.filter(r=>!report||(r.provider===report.provider&&r.device===report.device&&r.country===report.country&&r.language===report.language)).map(r=>({observedAt:r.observedAt,provider:r.provider,count:r.rows.filter(r=>r.position>=1&&r.position<=100).length,distribution:[[1,3],[4,10],[11,20],[21,50],[51,100]].map(([min,max])=>r.rows.filter(k=>k.position>=min&&k.position<=max).length),traffic:total(r.rows.filter(k=>k.position>=1&&k.position<=100),'traffic'),device:r.device}))};
 }
 
 export function organicCSV(suite) {
