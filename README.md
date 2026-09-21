@@ -22,6 +22,8 @@ External account creation, automatic placement of backlinks, AI content generati
 
 ## Connect and run
 
+**Free trial deployment:** follow **[DEPLOY-RENDER.md](DEPLOY-RENDER.md)** for Render Free + Neon Free. The included `render.yaml` configures a free Node web service, persistent PostgreSQL storage and startup migrations. Free hosting sleeps when idle; live Shopify OAuth/webhooks still require verification. No paid resources or daily scheduler are created by this blueprint.
+
 For Vercel with Neon PostgreSQL, follow **[DEPLOY-VERCEL.md](DEPLOY-VERCEL.md)**. The app selects the database client from `DATABASE_URL`; local SQLite remains supported. `npm run db:generate` generates both clients and `npm run db:migrate` selects the matching migration directory. Cloud builds do not migrate databases automatically.
 
 Node 22.12+ or Node 24, npm and Shopify CLI are required. Use Shopify Dev Dashboard to register the app for custom distribution to this store. This app is hosted by you; Shopify CLI deploy does **not** deploy the web server.

@@ -24,7 +24,9 @@
     "db:generate": "node scripts/postgres-schema.mjs && prisma generate && prisma generate --schema prisma/postgresql/schema.prisma",
     "db:migrate": "node scripts/migrate-database.mjs",
     "build:vercel": "npm run db:generate && react-router build",
-    "pretypecheck": "npm run db:generate"
+    "pretypecheck": "npm run db:generate",
+    "build:render": "npm run db:generate && npm run build",
+    "start:render": "node scripts/start-render.mjs"
   },
   "type": "module",
   "engines": {

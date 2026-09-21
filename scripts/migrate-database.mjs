@@ -5,7 +5,7 @@ try { process.loadEnvFile(); } catch (error) { if (error.code !== 'ENOENT') thro
 const url = process.env.DATABASE_URL || '';
 const postgres = /^postgres(ql)?:\/\//.test(url);
 if (!postgres && !url.startsWith('file:')) throw new Error('Set DATABASE_URL to a PostgreSQL or local SQLite URL.');
-if (process.env.VERCEL && !postgres) throw new Error('Vercel requires PostgreSQL; SQLite cannot persist there.');
+if ((process.env.VERCEL || process.env.RENDER) && !postgres) throw new Error('Cloud hosting requires PostgreSQL; SQLite cannot persist there.');
 if (postgres && !/^postgres(ql)?:\/\//.test(process.env.DIRECT_URL || '')) {
   throw new Error('Set DIRECT_URL to the direct PostgreSQL connection for migrations.');
 }

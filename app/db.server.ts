@@ -7,8 +7,8 @@ declare global {
 }
 
 const postgres = /^postgres(ql)?:\/\//.test(process.env.DATABASE_URL || '');
-if (process.env.VERCEL && !postgres) {
-  throw new Error('Vercel requires a PostgreSQL DATABASE_URL.');
+if ((process.env.VERCEL || process.env.RENDER) && !postgres) {
+  throw new Error('Cloud hosting requires a PostgreSQL DATABASE_URL.');
 }
 // Both clients are generated from the same models. Reuse connections per instance.
 const prisma = global.prismaGlobal ?? (postgres

@@ -41,8 +41,12 @@ jobs:
         run: npm test
         env:
           TEST_DATABASE_URL: postgresql://test:test@localhost:5432/nowusa_test
-      - name: Standard server build
-        run: npm run build
+      - name: Render server build
+        run: npm run build:render
+      - name: Render startup smoke test
+        run: node scripts/smoke-render.mjs
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nowusa_test
       - name: Vercel build
         run: npm run build:vercel
         env:
