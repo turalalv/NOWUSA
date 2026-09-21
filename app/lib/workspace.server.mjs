@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {suiteOperation} from './seo-suite.server.mjs';
 import {importCompetitor} from './competitors.mjs';
 import {importBacklinkCSV} from './backlink-import.mjs';
 import {growthData,setReadiness,saveOutreach,setTaskDone} from './growth.mjs';
@@ -83,7 +84,8 @@ export async function performOperation({db,shop,admin,input}) {
   try{
     const row=await db.seoWorkspace.findUniqueOrThrow({where:{shop}});const state=JSON.parse(row.data);const api=adminClient(admin,shop);
     let message;
-    switch(input.intent){
+    if(input.intent.startsWith('suite-'))message=await suiteOperation(state,input);
+    else switch(input.intent){
       case 'competitor-import':importCompetitor(state,input.json);message="Rakip SEO raporu kaydedildi.";break;
       case 'backlink-csv-import':importBacklinkCSV(state,input);message="Backlink CSV raporu kaydedildi.";break;
       case 'growth-check':setReadiness(state,input);message="Ürün kontrolü kaydedildi.";break;
@@ -178,7 +180,7 @@ export async function performOperation({db,shop,admin,input}) {
     }
     const saved=await db.seoWorkspace.updateMany({where:{shop,lockToken,revision:row.revision},data:{data:JSON.stringify(state),revision:{increment:1}}});
     if(saved.count!==1)throw new Error("Veriler başka bir işlemde değişti. Kataloğu güncelleyin.");
-    return {ok:true,message};
+    return {ok:!(input.intent==='suite-daily'&&state.seoSuite?.runs?.at(-1)?.errors?.length),message};
   }finally{await db.seoWorkspace.updateMany({where:{shop,lockToken},data:{lockToken:null,lockUntil:null}});}
 }
 export function exportAudit(state) {

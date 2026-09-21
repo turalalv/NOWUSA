@@ -19,6 +19,7 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <s-app-nav>
         <s-link href="/app">No Sweat SEO</s-link>
+        <s-link href="/app/seo-suite">SEO Merkezi</s-link>
         <s-link href="/app/competitors">Rakip SEO</s-link>
         <s-link href="/app/backlink-import">Backlink karşılaştırması</s-link>
       </s-app-nav>

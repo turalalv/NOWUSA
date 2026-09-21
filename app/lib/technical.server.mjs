@@ -1,27 +1,28 @@
 import { inspectHTML } from './core/shopify.mjs';
 
 const allowedHosts = new Set(['nosweatusa.com','www.nosweatusa.com']);
-export function storefrontURL(value, base='https://nosweatusa.com') {
+export function storefrontURL(value, base='https://nosweatusa.com',keepQuery=false) {
   try {
     const url=new URL(value,base);
     if(url.protocol!=='https:'||!allowedHosts.has(url.hostname)||url.port||url.username||url.password)return null;
-    if(!/^\/(?:$|products\/|collections\/|pages\/|blogs\/|robots\.txt$|sitemap\.xml$)/.test(url.pathname))return null;
-    url.search='';url.hash='';return url.href;
+    if(!/^\/(?:$|products\/|collections\/|pages\/|blogs\/|robots\.txt$|sitemap(?:_[a-zA-Z0-9_-]+)?\.xml$)/.test(url.pathname))return null;
+    if(!keepQuery)url.search='';url.hash='';return url.href;
   }catch{return null;}
 }
-export async function fetchPage(input, {head=false, fetcher=fetch}={}) {
-  let url=storefrontURL(input);if(!url)throw new Error("Yalnızca No Sweat USA’nın herkese açık sayfaları kontrol edilir.");
-  const signal=AbortSignal.timeout(8000);
+export async function fetchPage(input, {head=false, fetcher=fetch,keepQuery=false,userAgent='NoSweatSEO/1.0 (owner-requested audit)',allowURL=()=>true}={}) {
+  let url=storefrontURL(input,undefined,keepQuery);if(!url)throw new Error("Yalnızca No Sweat USA’nın herkese açık sayfaları kontrol edilir.");
+  const signal=AbortSignal.timeout(8000),started=Date.now(),redirects=[];
   for(let i=0;i<5;i++){
-    const response=await fetcher(url,{method:head?'HEAD':'GET',redirect:'manual',signal,headers:{'user-agent':'NoSweatSEO/1.0 (owner-requested audit)'}});
+    if(!allowURL(url))throw new Error('URL tarama kuralları tarafından engellendi.');
+    const response=await fetcher(url,{method:head?'HEAD':'GET',redirect:'manual',signal,headers:{'user-agent':userAgent}});
     if([301,302,303,307,308].includes(response.status)){
-      const next=storefrontURL(response.headers.get('location')||'',url);
-      await response.body?.cancel();if(!next)throw new Error("Başka alan adına veya kapalı yola yönlendirme takip edilmedi.");url=next;continue;
+      const next=storefrontURL(response.headers.get('location')||'',url,keepQuery);
+      await response.body?.cancel();if(!next)throw new Error("Başka alan adına veya kapalı yola yönlendirme takip edilmedi.");redirects.push({from:url,to:next,status:response.status});url=next;continue;
     }
-    if(head){await response.body?.cancel();return {url,status:response.status,html:''};}
+    if(head){await response.body?.cancel();return {url,status:response.status,html:'',redirects,elapsedMs:Date.now()-started,bytes:0,xRobots:response.headers.get('x-robots-tag')||''};}
     const chunks=[];let bytes=0;
     if(response.body)for await(const chunk of response.body){bytes+=chunk.length;if(bytes>2_500_000){throw new Error("HTML, 2,5 MB kontrol sınırını aşıyor.");}chunks.push(chunk);}
-    return {url,status:response.status,html:Buffer.concat(chunks).toString('utf8')};
+    return {url,status:response.status,html:Buffer.concat(chunks).toString('utf8'),redirects,elapsedMs:Date.now()-started,bytes,xRobots:response.headers.get('x-robots-tag')||''};
   }
   throw new Error("Yönlendirme sınırı aşıldı.");
 }

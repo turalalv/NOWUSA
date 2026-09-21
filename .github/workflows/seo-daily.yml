@@ -1,0 +1,25 @@
+name: Daily SEO monitoring
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: nowusa-seo-daily
+  cancel-in-progress: false
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Run authorized daily checks
+        env:
+          SEO_CRON_SECRET: ${{ secrets.SEO_CRON_SECRET }}
+        run: |
+          if [ -z "$SEO_CRON_SECRET" ]; then
+            echo 'SEO_CRON_SECRET is missing. Configure the same secret as Render CRON_SECRET.'
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 650 \
+            --request POST --header "Authorization: Bearer $SEO_CRON_SECRET" \
+            https://nowusa.onrender.com/jobs/daily

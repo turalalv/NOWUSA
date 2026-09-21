@@ -31,7 +31,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const text = await request.text();
     if (text.length > 3_000_000) throw new Error("İstek boyutu 3 MB sınırını aşıyor.");
     const input = JSON.parse(text) as ActionInput;
-    if(['google-connect','google-disconnect','google-settings'].includes(input.intent)&&!canManageGoogle(session))throw new Error("Google bağlantısını yönetmek için mağaza sahibi veya ayrıca yetkilendirilmiş bir kullanıcı olmalısınız.");
+    if((['google-connect','google-disconnect','google-settings'].includes(input.intent)||['suite-settings','suite-provider','suite-daily','suite-audit-settings','suite-audit'].includes(input.intent))&&!canManageGoogle(session))throw new Error("Google bağlantısını yönetmek için mağaza sahibi veya ayrıca yetkilendirilmiş bir kullanıcı olmalısınız.");
     if(input.intent==='google-connect')return {ok:true,connectURL:await prepareGoogle(db,session.shop)};
     if(input.intent==='refresh')return {ok:true};
     if (input.intent === 'export') {
