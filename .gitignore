@@ -33,3 +33,6 @@ pnpm-lock.yaml
 
 /.vercel/
 /generated/
+
+# Browser automation snapshots can include account and credential data.
+/.playwright-mcp/

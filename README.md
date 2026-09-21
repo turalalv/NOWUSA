@@ -4,7 +4,7 @@ No Sweat SEO Studio — Shopify embedded app
 
 Private, single-merchant app for **No Sweat USA**, rendered inside Shopify Admin → Apps. Storefront: `https://nosweatusa.com`; public storefront identifies the shop as `iyhxfe-mw.myshopify.com`.
 
-**Status:** implementation and local checks complete; not registered, deployed, installed, or tested against an authenticated live store. There are no live credentials in this project. The screenshots in `artifacts/` use explicitly labelled sample data.
+**Status (2026-09-21):** deployed to [Render Free](https://nowusa.onrender.com) with Neon Free PostgreSQL and installed in No Sweat USA. Shopify version `no-sweat-seo-2` is active. Startup migrations, HTTP health checks, embedded authentication and the initial catalog import (6 products, 2 collections) passed. Google Search Console, scheduled jobs and live product/image edits have not been verified. Production secrets are stored in Render, not in Git. The screenshots in `artifacts/` use explicitly labelled sample data.
 
 ## Included
 
@@ -22,7 +22,7 @@ External account creation, automatic placement of backlinks, AI content generati
 
 ## Connect and run
 
-**Free trial deployment:** follow **[DEPLOY-RENDER.md](DEPLOY-RENDER.md)** for Render Free + Neon Free. The included `render.yaml` configures a free Node web service, persistent PostgreSQL storage and startup migrations. Free hosting sleeps when idle; live Shopify OAuth/webhooks still require verification. No paid resources or daily scheduler are created by this blueprint.
+**Free trial deployment:** follow **[DEPLOY-RENDER.md](DEPLOY-RENDER.md)** for Render Free + Neon Free. The included `render.yaml` configures a free Node web service, persistent PostgreSQL storage and startup migrations. Open the installed app in [Shopify Admin](https://admin.shopify.com/store/iyhxfe-mw/apps/no-sweat-seo/app). Free hosting sleeps when idle; webhook delivery and cold-start authentication still require verification. No paid resources or daily scheduler are created by this blueprint.
 
 For Vercel with Neon PostgreSQL, follow **[DEPLOY-VERCEL.md](DEPLOY-VERCEL.md)**. The app selects the database client from `DATABASE_URL`; local SQLite remains supported. `npm run db:generate` generates both clients and `npm run db:migrate` selects the matching migration directory. Cloud builds do not migrate databases automatically.
 
@@ -35,7 +35,7 @@ Node 22.12+ or Node 24, npm and Shopify CLI are required. Use Shopify Dev Dashbo
 5. `npm run setup`, then test with `shopify app dev --store YOUR-DEVELOPMENT-STORE.myshopify.com` on an eligible development or Plus sandbox store. The live No Sweat USA store needs the hosted production app and its installation flow; CLI dev does not target ordinary production stores. Follow Shopify's installation/permission screen and open the app through Shopify Admin.
 6. Click **Kataloqu yoxla**. Draft changes are local to the app until you explicitly confirm a live update. Review Shopify staff permissions too; online tokens act as the current staff member.
 
-Production: deploy the Dockerfile to a HTTPS host, attach a persistent volume at `/data`, configure the environment, run migrations (container startup does this), and deploy the linked app configuration with `shopify app deploy`. Use one application instance with this SQLite setup, and back up the volume. Multiple replicas require a shared database and migration/locking changes. Protect backups as they include Shopify sessions. The registered No Sweat SEO Client ID is linked. Application and redirect URLs remain placeholders until hosting is configured. Shopify CLI configuration validation passes, but this does not verify hosting or installation.
+The current deployment uses Render + Neon and the live URLs in `shopify.app.toml`. An alternative SQLite deployment can use the Dockerfile on an HTTPS host with a persistent volume at `/data`; container startup runs migrations. Use one application instance with SQLite and back up the volume. Multiple replicas require a shared database and migration/locking changes. Protect backups as they include Shopify sessions.
 
 ## Enable Google, compression and daily checks
 

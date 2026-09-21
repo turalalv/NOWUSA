@@ -1,7 +1,7 @@
 # Link this project to the registered app with `shopify app config link`.
 client_id = "15dad9f47a0fae6a2d46cf6c02946492"
 name = "No Sweat SEO"
-application_url = "https://your-app-host.example"
+application_url = "https://nowusa.onrender.com"
 embedded = true
 
 [build]
@@ -11,7 +11,7 @@ automatically_update_urls_on_dev = true
 scopes = "read_products,write_products,read_files,write_files"
 
 [auth]
-redirect_urls = ["https://your-app-host.example/auth/callback"]
+redirect_urls = ["https://nowusa.onrender.com/auth/callback"]
 
 [webhooks]
 api_version = "2026-07"

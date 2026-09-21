@@ -1,5 +1,17 @@
 # NOWUSA — pulsuz Render + Neon quraşdırılması
 
+## Cari yerləşdirmə — 2026-09-21
+
+- Tətbiq: https://nowusa.onrender.com
+- Shopify: https://admin.shopify.com/store/iyhxfe-mw/apps/no-sweat-seo/app
+- Render Free servis: `srv-daomnomgekts73as900g`, Frankfurt; blueprint `exs-daomma2jnfac73eskj80`.
+- Mövcud Neon Free layihəsi: `NOWUSA` / `sweet-bread-44269010`, AWS Ohio; `production` branch. Mövcud bazanın regionu dəyişdirilməyib.
+- Shopify-da aktiv versiya: `no-sweat-seo-2`. App URL və `/auth/callback` Render domeninə bağlanıb; mövcud scopes və iki webhook konfiqurasiyası CLI ilə yayımlanıb.
+- Build, ilkin PostgreSQL miqrasiyası, `/healthz` (200 / `ok`), Shopify daxilində giriş və kataloq importu (6 məhsul, 2 kolleksiya) uğurludur.
+- Google Search Console bağlantısı, gündəlik scheduler, webhook çatdırılması və canlı məhsul/şəkil redaktəsi bu yerləşdirmə yoxlamasına daxil deyil.
+
+Render-də baza bağlantıları və tətbiq secret-i saxlanılıb; onları Git-ə əlavə etməyin. Aşağıdakı addımlar yeni yerləşdirmə üçündür.
+
 Tətbiq **Render Free**, məlumatlar **Neon Free** üzərində yerləşir. Repo-dakı `render.yaml` yalnız bir pulsuz web service yaradır; ödənişli disk, database və cron yaratmır. Render Free fasiləsiz production xidməti üçün tövsiyə edilmir: 15 dəqiqə istifadə olmadıqda dayanır, növbəti açılış təxminən bir dəqiqə çəkə bilər. Əvvəl sınaq edin; Shopify girişinin, webhook-ların və şəkil yeniləməsinin canlı yoxlanması lazımdır.
 
 ## 1. Pulsuz Neon bazası
@@ -53,6 +65,6 @@ Bu URL-ləri `shopify.app.toml`-a da yazın. Sonra düzgün əsas config-i valid
 - Google və backlink yeniləmələrini paneldən əl ilə başladın. `vercel.json` cron-ları Render-də işləmir; bu blueprint avtomatik gündəlik scheduler yaratmır. Ayrı scheduler qurulmadan paneldəki daily seçimləri təkbaşına gündəlik iş başlatmır.
 - Google inteqrasiyası istənirsə `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` və Google OAuth-da real Render URL + `/google/callback` əlavə edin.
 - Şəkil ehtiyat nüsxələri də Neon storage yerini istifadə edir; vacib orijinalları endirib ayrıca saxlayın. Xüsusən böyük şəkillər üçün Free serverin yaddaş limitini nəzərə alaraq əvvəl kiçik sınaq edin.
-- Bu repo ilkin konfiqurasiyanı və testləri təmin edir. Canlı Render/Neon hesablarına giriş, secret-lərin yazılması və Shopify Install ayrıca tamamlanmalıdır.
+- Yeni yerləşdirmədə Render/Neon hesablarına giriş, secret-lərin yazılması və Shopify Install ayrıca tamamlanmalıdır; yuxarıdakı cari yerləşdirmədə bunlar tamamlanıb.
 
 Mənbələr: [Render Free məhdudiyyətləri](https://render.com/docs/free), [Blueprint konfiqurasiyası](https://render.com/docs/blueprint-spec), [Render environment variables](https://render.com/docs/environment-variables), [Neon planları](https://neon.com/pricing).
