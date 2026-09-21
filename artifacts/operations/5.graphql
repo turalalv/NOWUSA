@@ -1,0 +1,1 @@
+mutation SEO($input: ProductUpdateInput!) { productUpdate(product: $input) { product { id updatedAt seo { title description } } userErrors { field message } } }

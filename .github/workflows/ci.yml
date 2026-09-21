@@ -1,39 +1,54 @@
-on: [push, pull_request]
-
 name: CI
-
+on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
-  CI:
-    name: Node ${{ matrix.node }} and ${{ matrix.manager }}
+  verify:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [20.19.0, 22, 24]
-        manager: ['npm', 'yarn', 'pnpm']
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: nowusa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d nowusa_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: file:./dev.sqlite
+      DIRECT_URL: postgresql://test:test@localhost:5432/nowusa_test
+      CHECKPOINT_DISABLE: '1'
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install pnpm
-        if: ${{ matrix.manager == 'pnpm' }}
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-        with:
-          version: 8
-
-      - name: Install dependencies using ${{ matrix.manager }}
-        run: ${{ matrix.manager }} install
-
-      - name: Run TypeScript type checking
-        if: ${{ !startsWith(github.head_ref || github.ref_name, 'javascript') }}
-        run: npx tsc --noEmit
-
-      - name: Run ESLint
-        run: npm run lint
-
-      - name: Validate Prisma
-        run: npx prisma generate && npx prisma validate
-
-      - name: Build application
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: SQLite tests
+        run: npm test
+      - name: Apply PostgreSQL migrations
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nowusa_test
+      - name: PostgreSQL tests
+        run: npm test
+        env:
+          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/nowusa_test
+      - name: Standard server build
         run: npm run build
+      - name: Vercel build
+        run: npm run build:vercel
+        env:
+          VERCEL: '1'
+          DATABASE_URL: postgresql://test:test@localhost:5432/nowusa_test
+          SHOPIFY_API_KEY: ci-placeholder
+          SHOPIFY_API_SECRET: ci-placeholder
+          SHOPIFY_APP_URL: https://ci.example
+          ALLOWED_SHOP: iyhxfe-mw.myshopify.com

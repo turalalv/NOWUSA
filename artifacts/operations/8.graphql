@@ -1,0 +1,1 @@
+query ImageAlt($id: ID!) { node(id: $id) { ... on MediaImage { id alt } } }

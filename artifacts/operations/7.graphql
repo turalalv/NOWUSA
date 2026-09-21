@@ -1,0 +1,1 @@
+mutation SEO($input: CollectionInput!) { collectionUpdate(input: $input) { collection { id updatedAt seo { title description } } userErrors { field message } } }

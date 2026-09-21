@@ -1,0 +1,1 @@
+query Current($id: ID!) { node(id: $id) { ... on Collection { id updatedAt seo { title description } } } }

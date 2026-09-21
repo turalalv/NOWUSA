@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "react-router",
+  "buildCommand": "npm run build:vercel",
+  "crons": [
+    { "path": "/jobs/daily?task=google", "schedule": "0 6 * * *" },
+    { "path": "/jobs/daily?task=backlinks", "schedule": "30 6 * * *" }
+  ]
+}

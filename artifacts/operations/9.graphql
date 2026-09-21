@@ -1,0 +1,1 @@
+mutation UpdateImageAlt($files: [FileUpdateInput!]!) { fileUpdate(files: $files) { files { id alt } userErrors { field message } } }

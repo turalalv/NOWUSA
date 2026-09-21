@@ -1,236 +1,102 @@
-# Shopify App Template - React Router
+# NOWUSA
 
-This is a template for building a [Shopify app](https://shopify.dev/docs/apps/getting-started) using [React Router](https://reactrouter.com/). It was forked from the [Shopify Remix app template](https://github.com/Shopify/shopify-app-template-remix) and converted to React Router.
+No Sweat SEO Studio — Shopify embedded app
 
-Rather than cloning this repo, follow the [Quick Start steps](https://github.com/Shopify/shopify-app-template-react-router#quick-start).
+Private, single-merchant app for **No Sweat USA**, rendered inside Shopify Admin → Apps. Storefront: `https://nosweatusa.com`; public storefront identifies the shop as `iyhxfe-mw.myshopify.com`.
 
-Visit the [`shopify.dev` documentation](https://shopify.dev/docs/api/shopify-app-react-router) for more details on the React Router app package.
+**Status:** implementation and local checks complete; not registered, deployed, installed, or tested against an authenticated live store. There are no live credentials in this project. The screenshots in `artifacts/` use explicitly labelled sample data.
 
-## Upgrading from Remix
+## Included
 
-If you have an existing Remix app that you want to upgrade to React Router, please follow the [upgrade guide](https://github.com/Shopify/shopify-app-template-react-router/wiki/Upgrading-from-Remix). Otherwise, please follow the quick start guide below.
+- Product and collection SEO audit: missing/duplicate text, editorial length hints, image alt text, keyword mapping, internal-link suggestions, CSV export.
+- Individual and bulk SEO drafts, Google snippet preview, exact-draft confirmation, live source recheck, persisted before/after history and reviewed rollback drafts.
+- Up to 100 bulk draft suggestions per request, derived from existing product copy; up to 25 confirmed SEO writes. A failed write stops the remaining batch; earlier successful writes remain applied.
+- Product image alt-text editor using Shopify MediaImage/fileUpdate. Image writes require separate review. Shared files affect every page referencing them.
+- Public HTML checks for H1, canonical presence, meta noindex and JSON-LD parsing; bounded internal-link checks for 404/410; robots.txt and sitemap availability.
+- Search Console OAuth connection using read-only access, encrypted refresh tokens, direct API reports for two 28-day periods, and optional daily refresh; CSV import remains available.
+- JPEG/WebP/PNG compression with source-byte checks, side-by-side previews, original backups, explicit live confirmation and asynchronous Shopify processing verification.
+- Backlink source tracking, link attribute checks, unlinked brand mention detection and generated search queries for opportunity research. Optional daily source checks.
+- Prisma persistence, per-shop mutation lock, online merchant sessions and authenticated uninstall cleanup.
 
-## Quick start
+External account creation, automatic placement of backlinks, AI content generation, automatic schema injection and ranking guarantees are not included. Backlink opportunity searches open in Google; results are not scraped or automatically purchased. JSON-LD presence/syntax is not full rich-result validation. Existing theme schema is preserved. Audit scores are this app's checklist, not a Google metric.
 
-### Prerequisites
+## Connect and run
 
-Before you begin, you'll need to [download and install the Shopify CLI](https://shopify.dev/docs/apps/tools/cli/getting-started) if you haven't already.
+For Vercel with Neon PostgreSQL, follow **[DEPLOY-VERCEL.md](DEPLOY-VERCEL.md)**. The app selects the database client from `DATABASE_URL`; local SQLite remains supported. `npm run db:generate` generates both clients and `npm run db:migrate` selects the matching migration directory. Cloud builds do not migrate databases automatically.
 
-### Setup
+Node 22.12+ or Node 24, npm and Shopify CLI are required. Use Shopify Dev Dashboard to register the app for custom distribution to this store. This app is hosted by you; Shopify CLI deploy does **not** deploy the web server.
 
-```shell
-shopify app init --template=https://github.com/Shopify/shopify-app-template-react-router
-```
+1. `npm ci`
+2. Copy `.env.example` to `.env`; fill `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, and the actual HTTPS `SHOPIFY_APP_URL`. Keep credentials out of chat and Git.
+3. `shopify app config link --client-id YOUR_APP_CLIENT_ID` (the CLI may prompt for Shopify sign-in).
+4. Confirm the linked TOML keeps `embedded = true`, scopes `read_products,write_products,read_files,write_files`, API version `2026-07`, and both app webhooks. Set the real application URL and `/auth/callback` redirect URL. Keep `ALLOWED_SHOP=iyhxfe-mw.myshopify.com` in the server environment.
+5. `npm run setup`, then test with `shopify app dev --store YOUR-DEVELOPMENT-STORE.myshopify.com` on an eligible development or Plus sandbox store. The live No Sweat USA store needs the hosted production app and its installation flow; CLI dev does not target ordinary production stores. Follow Shopify's installation/permission screen and open the app through Shopify Admin.
+6. Click **Kataloqu yoxla**. Draft changes are local to the app until you explicitly confirm a live update. Review Shopify staff permissions too; online tokens act as the current staff member.
 
-### Local Development
+Production: deploy the Dockerfile to a HTTPS host, attach a persistent volume at `/data`, configure the environment, run migrations (container startup does this), and deploy the linked app configuration with `shopify app deploy`. Use one application instance with this SQLite setup, and back up the volume. Multiple replicas require a shared database and migration/locking changes. Protect backups as they include Shopify sessions. The registered No Sweat SEO Client ID is linked. Application and redirect URLs remain placeholders until hosting is configured. Shopify CLI configuration validation passes, but this does not verify hosting or installation.
 
-```shell
-shopify app dev
-```
+## Enable Google, compression and daily checks
 
-Press P to open the URL to your app. Once you click install, you can start development.
+1. Generate **INTEGRATION_ENCRYPTION_KEY** once as 64 random hex characters (see `.env.example`). Store it in the host's secret manager and back it up separately. It encrypts Google tokens and signs short-lived image delivery URLs. Changing it invalidates existing Google connections and signed image URLs.
+2. In Google Cloud, enable **Search Console API**, configure the OAuth consent screen, and create a **Web application** OAuth client. Register the exact callback `https://YOUR-APP-HOST/google/callback`; set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the server. If the Google app is in Testing, add the store owner's Google account as a test user; Google may expire testing-mode refresh tokens after seven days. Complete Google's publishing/verification requirements for the intended use.
+3. As the Shopify store owner, open **Google nəticələri → Google bağlantısını başlat**, follow the generated link in a new window, approve read-only access, and return to refresh connection status. The Google account must have access to a root Search Console property for `nosweatusa.com`. Select the property and click **Google hesabatını gətir**. Reports filter web search to USA, all devices, with finalized data ending three days before the current Pacific date. Each of two consecutive 28-day periods requests page, query–page and page–date reports (six report requests, plus pagination). No CSV is needed.
+4. For scheduled refresh, generate a separate random **CRON_SECRET** of at least 32 characters. On the host, schedule `npm run sync:daily` once per day with `SHOPIFY_APP_URL` and `CRON_SECRET` in its environment; alternatively configure a scheduler to **POST `/jobs/daily` with `Authorization: Bearer <CRON_SECRET>`**. Allow up to seven minutes for bounded network checks. Turn on the relevant daily checkbox inside the app. Nothing runs daily until the host scheduler is configured. Google refresh is skipped if the last successful sync was under 20 hours ago.
+5. **Şəkil sıxılması** reads authoritative original bytes from Shopify, creates a smaller same-format preview when possible and stores the original in SQLite. Compare full-size images before confirmation. JPEG/WebP use quality 82; PNG is lossless. Dimensions and ICC profile are preserved; orientation is applied and other metadata may be stripped. No automatic live compression occurs. Limits: 20 MB, 40 million pixels, still images only, 10 stored compression jobs. Original backup links expire within 24 hours; opening the app generates fresh links. Download backups before deletion or uninstall. File bytes are served through signed capability URLs so Shopify can fetch them; don't share those URLs.
+6. Shopify processes replacement images asynchronously. **Emal vəziyyətini yoxla** verifies the current original bytes against the prepared file. Different bytes are reported as unconfirmed rather than successful. Shopify may recompress originals; a differing result needs manual review. Backup restoration is manual using the downloaded original. The listed savings concern prepared file bytes, not measured page speed.
+7. **Backlinklər** accepts up to 25 external source-page HTTPS URLs. It checks HTML links to the store and reports `nofollow`, `sponsored`, `ugc` values. Unlinked mentions are opportunities to review, not automatically sent outreach. 403/429/network failures produce unknown status, never proof of a lost link. Requests use public IPv4 DNS validation, address pinning, bounded response sizes, redirect revalidation and no credentials. IPv6-only sites aren't supported. No external messages or profile registrations are made.
 
-Local development is powered by [the Shopify CLI](https://shopify.dev/docs/apps/tools/cli). It logs into your account, connects to an app, provides environment variables, updates remote config, creates a tunnel and provides commands to generate extensions.
+Sources: [Google OAuth](https://developers.google.com/identity/protocols/oauth2/web-server), [Search Analytics API](https://developers.google.com/webmaster-tools/v1/searchanalytics/query), [Shopify fileUpdate](https://shopify.dev/docs/api/admin-graphql/2026-07/mutations/fileUpdate), [Sharp output options](https://sharp.pixelplumbing.com/api-output/).
 
-### Authenticating and querying data
+## Verification
 
-To authenticate and query data you can use the `shopify` const that is exported from `/app/shopify.server.js`:
-
-```js
-export async function loader({ request }) {
-  const { admin } = await shopify.authenticate.admin(request);
-
-  const response = await admin.graphql(`
-    {
-      products(first: 25) {
-        nodes {
-          title
-          description
-        }
-      }
-    }`);
-
-  const {
-    data: {
-      products: { nodes },
-    },
-  } = await response.json();
-
-  return nodes;
-}
-```
-
-This template comes pre-configured with examples of:
-
-1. Setting up your Shopify app in [/app/shopify.server.ts](https://github.com/Shopify/shopify-app-template-react-router/blob/main/app/shopify.server.ts)
-2. Querying data using Graphql. Please see: [/app/routes/app.\_index.tsx](https://github.com/Shopify/shopify-app-template-react-router/blob/main/app/routes/app._index.tsx).
-3. Responding to webhooks. Please see [/app/routes/webhooks.tsx](https://github.com/Shopify/shopify-app-template-react-router/blob/main/app/routes/webhooks.app.uninstalled.tsx).
-
-Please read the [documentation for @shopify/shopify-app-react-router](https://shopify.dev/docs/api/shopify-app-react-router) to see what other API's are available.
-
-## Shopify Dev MCP
-
-This template is configured with the Shopify Dev MCP. This instructs [Cursor](https://cursor.com/), [GitHub Copilot](https://github.com/features/copilot) and [Claude Code](https://claude.com/product/claude-code) and [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) to use the Shopify Dev MCP.
-
-For more information on the Shopify Dev MCP please read [the documentation](https://shopify.dev/docs/apps/build/devmcp).
-
-## Deployment
-
-### Application Storage
-
-This template uses [Prisma](https://www.prisma.io/) to store session data, by default using an [SQLite](https://www.sqlite.org/index.html) database.
-The database is defined as a Prisma schema in `prisma/schema.prisma`.
-
-This use of SQLite works in production if your app runs as a single instance.
-The database that works best for you depends on the data your app needs and how it is queried.
-Here’s a short list of databases providers that provide a free tier to get started:
-
-| Database   | Type             | Hosters                                                                                                                                                                                                                                    |
-| ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| MySQL      | SQL              | [Digital Ocean](https://www.digitalocean.com/products/managed-databases-mysql), [Planet Scale](https://planetscale.com/), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/mysql) |
-| PostgreSQL | SQL              | [Digital Ocean](https://www.digitalocean.com/products/managed-databases-postgresql), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/postgres)                                   |
-| Redis      | Key-value        | [Digital Ocean](https://www.digitalocean.com/products/managed-databases-redis), [Amazon MemoryDB](https://aws.amazon.com/memorydb/)                                                                                                        |
-| MongoDB    | NoSQL / Document | [Digital Ocean](https://www.digitalocean.com/products/managed-databases-mongodb), [MongoDB Atlas](https://www.mongodb.com/atlas/database)                                                                                                  |
-
-To use one of these, you can use a different [datasource provider](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#datasource) in your `schema.prisma` file, or a different [SessionStorage adapter package](https://github.com/Shopify/shopify-api-js/blob/main/packages/shopify-api/docs/guides/session-storage.md).
-
-### Build
-
-Build the app by running the command below with the package manager of your choice:
-
-Using yarn:
-
-```shell
-yarn build
-```
-
-Using npm:
-
-```shell
+```sh
+npm run setup
+npm run typecheck
+npm test
 npm run build
+shopify app config validate --json
 ```
 
-Using pnpm:
+`test/` also covers OAuth state/replay, encryption context, Google pagination/failure preservation, image source changes and byte verification, signed assets, private IP rejection and backlink result interpretation. It covers draft review hashes, stale live values, partial bulk results, empty-value rollback, image updates, persistent locking, import math and crawler limits using mocks and temporary SQLite databases. These tests perform no live Shopify writes.
 
-```shell
-pnpm run build
-```
+Optional UI smoke test: `PLAYWRIGHT_PATH=/absolute/path/to/playwright/index.mjs node scripts/browser-check.mjs`. Uses a temporary local server, the real Shopify Polaris CDN and labelled sample data, without bypassing authentication in the shipped application.
 
-## Hosting
+`scripts/collect-operations.mjs` extracts the application's exact GraphQL requests to `artifacts/operations/` without contacting Shopify, for official schema validation. API validation passed against 2026-07; collectionUpdate's supported `input` argument carries a deprecation warning. Main UI TypeScript and browser checks pass. The standalone toolkit component validator validates the premium components but reports an outdated standard-library error for `String.replaceAll` in the main dashboard; the actual project targets ES2022.
 
-When you're ready to set up your app in production, you can follow [our deployment documentation](https://shopify.dev/docs/apps/launch/deployment) to host it externally. From there, you have a few options:
+## Operational limits
 
-- [Google Cloud Run](https://shopify.dev/docs/apps/launch/deployment/deploy-to-google-cloud-run): This tutorial is written specifically for this example repo, and is compatible with the extended steps included in the subsequent [**Build your app**](tutorial) in the **Getting started** docs. It is the most detailed tutorial for taking a React Router-based Shopify app and deploying it to production. It includes configuring permissions and secrets, setting up a production database, and even hosting your apps behind a load balancer across multiple regions.
-- [Fly.io](https://fly.io/docs/js/shopify/): Leverages the Fly.io CLI to quickly launch Shopify apps to a single machine.
-- [Render](https://render.com/docs/deploy-shopify-app): This tutorial guides you through using Docker to deploy and install apps on a Dev store.
-- [Manual deployment guide](https://shopify.dev/docs/apps/launch/deployment/deploy-to-hosting-service): This resource provides general guidance on the requirements of deployment including environment variables, secrets, and persistent data.
+- Catalog import is bounded to 5,000 resources; each product includes at most 100 media nodes and reports truncation. Collection URLs are inferred from handles; verify their public HTTP status with the technical checker.
+- Technical audit: first 30 public page candidates and 60 internal links per run; no JS rendering, external URLs, X-Robots-Tag, Search Console index verification or Core Web Vitals.
+- Source checks reduce accidental overwrites, but Shopify SEO/file mutations have no atomic compare-and-swap here. Avoid simultaneous editing of the same fields in other apps. A timeout after a write can leave an unconfirmed outcome: refresh and inspect history before retrying.
+- Rollback creates a new reviewed draft only if live SEO still equals the recorded change. Alt-text restoration uses the image editor and recorded history.
+- Search Console exports need matching property, dates, country/device/search-type filters. Imported row totals may differ from Google's headline totals. No causal traffic attribution is claimed.
+- Keep the app host running to use the embedded app. Uninstall removes its stored sessions, workspace and history; it does not reverse previously applied store changes.
 
-When you reach the step for [setting up environment variables](https://shopify.dev/docs/apps/deployment/web#set-env-vars), you also need to set the variable `NODE_ENV=production`.
+## USA customer panel
 
-## Gotchas / Troubleshooting
+The default **ABŞ müştəriləri** tab provides:
 
-### Database tables don't exist
+- Click opportunities using real USA Search Console rows: at least 100 impressions, average position 3–20 and CTR below 3%. These are editorial filters, not a promised traffic increase. Existing source-based SEO drafts require review and explicit confirmation before application.
+- Observed query–product matches with manually selected target phrases. The editor shows the selected phrase for review; it does not invent product claims.
+- Product purchase-readiness checks: catalog image/description presence plus explicitly manual shipping, returns, claims, reviews and mobile checks.
+- English outreach drafts for tracked source pages and selected catalog targets. Drafts are editable and copied manually; the app sends no messages.
+- Three prioritized weekly tasks, completion and reopening. At most one task per product appears in the active top three.
+- Observed USA metrics for seven days before and after an applied SEO change, excluding the change day in Pacific time. Missing coverage, capped reports and overlapping edits prevent a misleading comparison. No causal attribution or sales measurement is claimed.
 
-If you get an error like:
+Page reports are capped at 50,000 rows per period; query and daily reports at 10,000 each. Detailed reports retain the latest two periods. Google can omit rows even below these caps. Global reports and CSV imports cannot masquerade as USA API data. No paid SEO or AI API is required for this panel. Google OAuth setup and live app installation remain necessary.
 
-```
-The table `main.Session` does not exist in the current database.
-```
+## Competitor SEO import
 
-Create the database for Prisma. Run the `setup` script in `package.json` using `npm`, `yarn` or `pnpm`.
+### Backlink CSV comparison
 
-### Navigating/redirecting breaks an embedded app
+The **Backlink müqayisəsi** menu opens `/app/backlink-import`. It is also available in the local preview at `http://localhost:8790`. Upload a comma-separated UTF-8 CSV for the selected target domain: SweatBlock, Certain Dri or No Sweat USA. Maximum 2.5 MB / 5000 rows per domain. Required headers are `source_url,target_url`; optional headers are `anchor,rel,nofollow`. Normalized aliases include `Referring page URL`, `Target URL`, `Anchor text` and `NoFollow`. Other provider layouts must be mapped to these columns before import. A blank template can be downloaded from the panel.
 
-Embedded apps must maintain the user session, which can be tricky inside an iFrame. To avoid issues:
+Imports are atomic, remove exact duplicate links and replace only the selected domain's prior report. A source hostname comparison prioritizes sources absent from the supplied own-site report and sources shared by competitors. This is neither a domain-quality score nor proof that a backlink is missing. Hostnames are compared, not registrable domains. Imported links are unverified provider claims; no live source requests, API subscription, automatic backlink discovery or placement occurs. Rel flags are preserved when supplied; unknown nofollow remains unknown. The full selected report and source comparison can be exported with spreadsheet-safe CSV cells. Use real provider exports to populate the initially empty panel. The existing live backlink checker remains a separate feature.
 
-1. Use `Link` from `react-router` or `@shopify/polaris`. Do not use `<a>`.
-2. Use `redirect` returned from `authenticate.admin`. Do not use `redirect` from `react-router`
-3. Use `useSubmit` from `react-router`.
+The SEO page detail now includes internal links (up to 500 per page). Previously saved reports need reimport to populate them. Google index status remains explicitly unverified.
 
-This only applies if your app is embedded, which it will be by default.
+Local preview: `npm run preview:competitors`, then open `http://localhost:8790`. This uses the same panel component with real saved crawler results and supports local JSON imports. No Shopify login or hosting is needed. Imports remain in memory until restart. It does not test Shopify authentication, database persistence, or live API actions. Internet is required to load the Polaris CDN. Stop with Ctrl+C. Set `PREVIEW_PORT` if port 8790 is occupied.
 
-### Webhooks: shop-specific webhook subscriptions aren't updated
+The **Rəqib SEO** navigation item opens `/app/competitors`. Import one `pages.json` file from `sweatblock-seo-scraper/output/sweatblock/` or `output/certaindri/` at a time (up to 2.5 MB and 500 pages). Each import replaces that domain’s prior report under the existing per-shop workspace lock. The panel displays titles, descriptions, H1, meta keywords, crawl timestamps, audit notes, and searchable phrase frequencies. These are extracted text phrases, not search-volume, ranking, or backlink-index data. The importer makes no network requests or Shopify catalog changes. Run the crawler separately; scheduled crawling is not wired into this panel.
 
-If you are registering webhooks in the `afterAuth` hook, using `shopify.registerWebhooks`, you may find that your subscriptions aren't being updated.
-
-Instead of using the `afterAuth` hook declare app-specific webhooks in the `shopify.app.toml` file. This approach is easier since Shopify will automatically sync changes every time you run `deploy` (e.g: `npm run deploy`). Please read these guides to understand more:
-
-1. [app-specific vs shop-specific webhooks](https://shopify.dev/docs/apps/build/webhooks/subscribe#app-specific-subscriptions)
-2. [Create a subscription tutorial](https://shopify.dev/docs/apps/build/webhooks/subscribe/get-started?deliveryMethod=https)
-
-If you do need shop-specific webhooks, keep in mind that the package calls `afterAuth` in 2 scenarios:
-
-- After installing the app
-- When an access token expires
-
-During normal development, the app won't need to re-authenticate most of the time, so shop-specific subscriptions aren't updated. To force your app to update the subscriptions, uninstall and reinstall the app. Revisiting the app will call the `afterAuth` hook.
-
-### Webhooks: Admin created webhook failing HMAC validation
-
-Webhooks subscriptions created in the [Shopify admin](https://help.shopify.com/en/manual/orders/notifications/webhooks) will fail HMAC validation. This is because the webhook payload is not signed with your app's secret key.
-
-The recommended solution is to use [app-specific webhooks](https://shopify.dev/docs/apps/build/webhooks/subscribe#app-specific-subscriptions) defined in your toml file instead. Test your webhooks by triggering events manually in the Shopify admin(e.g. Updating the product title to trigger a `PRODUCTS_UPDATE`).
-
-### Webhooks: Admin object undefined on webhook events triggered by the CLI
-
-When you trigger a webhook event using the Shopify CLI, the `admin` object will be `undefined`. This is because the CLI triggers an event with a valid, but non-existent, shop. The `admin` object is only available when the webhook is triggered by a shop that has installed the app. This is expected.
-
-Webhooks triggered by the CLI are intended for initial experimentation testing of your webhook configuration. For more information on how to test your webhooks, see the [Shopify CLI documentation](https://shopify.dev/docs/apps/tools/cli/commands#webhook-trigger).
-
-### Incorrect GraphQL Hints
-
-By default the [graphql.vscode-graphql](https://marketplace.visualstudio.com/items?itemName=GraphQL.vscode-graphql) extension for will assume that GraphQL queries or mutations are for the [Shopify Admin API](https://shopify.dev/docs/api/admin). This is a sensible default, but it may not be true if:
-
-1. You use another Shopify API such as the storefront API.
-2. You use a third party GraphQL API.
-
-If so, please update [.graphqlrc.ts](https://github.com/Shopify/shopify-app-template-react-router/blob/main/.graphqlrc.ts).
-
-### Using Defer & await for streaming responses
-
-By default the CLI uses a cloudflare tunnel. Unfortunately cloudflare tunnels wait for the Response stream to finish, then sends one chunk. This will not affect production.
-
-To test [streaming using await](https://reactrouter.com/api/components/Await#await) during local development we recommend [localhost based development](https://shopify.dev/docs/apps/build/cli-for-apps/networking-options#localhost-based-development).
-
-### "nbf" claim timestamp check failed
-
-This is because a JWT token is expired. If you are consistently getting this error, it could be that the clock on your machine is not in sync with the server. To fix this ensure you have enabled "Set time and date automatically" in the "Date and Time" settings on your computer.
-
-### Using MongoDB and Prisma
-
-If you choose to use MongoDB with Prisma, there are some gotchas in Prisma's MongoDB support to be aware of. Please see the [Prisma SessionStorage README](https://www.npmjs.com/package/@shopify/shopify-app-session-storage-prisma#mongodb).
-
-### Unable to require(`C:\...\query_engine-windows.dll.node`).
-
-Unable to require(`C:\...\query_engine-windows.dll.node`).
-The Prisma engines do not seem to be compatible with your system.
-
-query_engine-windows.dll.node is not a valid Win32 application.
-
-**Fix:** Set the environment variable:
-
-```shell
-PRISMA_CLIENT_ENGINE_TYPE=binary
-```
-
-This forces Prisma to use the binary engine mode, which runs the query engine as a separate process and can work via emulation on Windows ARM64.
-
-## Resources
-
-React Router:
-
-- [React Router docs](https://reactrouter.com/home)
-
-Shopify:
-
-- [Intro to Shopify apps](https://shopify.dev/docs/apps/getting-started)
-- [Shopify App React Router docs](https://shopify.dev/docs/api/shopify-app-react-router)
-- [Shopify CLI](https://shopify.dev/docs/apps/tools/cli)
-- [Shopify App Bridge](https://shopify.dev/docs/api/app-bridge-library).
-- [Polaris Web Components](https://shopify.dev/docs/api/app-home/polaris-web-components).
-- [App extensions](https://shopify.dev/docs/apps/app-extensions/list)
-- [Shopify Functions](https://shopify.dev/docs/api/functions)
-
-Internationalization:
-
-- [Internationalizing your app](https://shopify.dev/docs/apps/best-practices/internationalization/getting-started)
+Local TypeScript, tests, and production build pass for this integration; live installation and hosting remain unverified. The current TOML has a client ID, but its application and callback URLs are still placeholders.

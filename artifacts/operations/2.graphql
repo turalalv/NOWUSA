@@ -1,0 +1,1 @@
+query Catalog($after: String) { products(first: 50, after: $after) { nodes { id title handle descriptionHtml updatedAt seo { title description } onlineStoreUrl status vendor tags media(first: 100) { nodes { ... on MediaImage { id alt image { url } } } pageInfo { hasNextPage } } } pageInfo { hasNextPage endCursor } } }

@@ -1,0 +1,1 @@
+query CompressionSource($id: ID!) { node(id: $id) { ... on MediaImage { id fileStatus updatedAt originalSource { url } } } }

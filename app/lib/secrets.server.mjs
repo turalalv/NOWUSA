@@ -1,0 +1,9 @@
+import crypto from 'node:crypto';
+export const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
+export function key(){const value=process.env.INTEGRATION_ENCRYPTION_KEY||'';if(!/^[a-f0-9]{64}$/i.test(value))throw new Error('Serverdə INTEGRATION_ENCRYPTION_KEY (64 hex simvol) qurulmalıdır.');return Buffer.from(value,'hex');}
+export function seal(value,context){const iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key(),iv);cipher.setAAD(Buffer.from(context));const encrypted=Buffer.concat([cipher.update(JSON.stringify(value),'utf8'),cipher.final()]);return [iv,cipher.getAuthTag(),encrypted].map(b=>b.toString('base64url')).join('.');}
+export function unseal(value,context){const [iv,tag,data]=value.split('.').map(s=>Buffer.from(s,'base64url'));const cipher=crypto.createDecipheriv('aes-256-gcm',key(),iv);cipher.setAAD(Buffer.from(context));cipher.setAuthTag(tag);return JSON.parse(Buffer.concat([cipher.update(data),cipher.final()]).toString());}
+export function equal(a,b){return typeof a==='string'&&typeof b==='string'&&Buffer.byteLength(a)===Buffer.byteLength(b)&&crypto.timingSafeEqual(Buffer.from(a),Buffer.from(b));}
+export function appOrigin(){const u=new URL(process.env.SHOPIFY_APP_URL||'');if(u.protocol!=='https:'||u.username||u.password)throw new Error('Həqiqi HTTPS tətbiq ünvanı qurulmalıdır.');return u.origin;}
+export function assetURL(id,variant,expires=Math.floor(Date.now()/1000)+86400){const sig=crypto.createHmac('sha256',key()).update(`${id}:${variant}:${expires}`).digest('hex');return `${appOrigin()}/compression/${id}?variant=${variant}&expires=${expires}&sig=${sig}`;}
+export function validAsset(id,variant,expires,sig){if(!['original','optimized'].includes(variant)||!/^\d+$/.test(expires)||Number(expires)<Date.now()/1000||Number(expires)>Date.now()/1000+86460)return false;return equal(sig,crypto.createHmac('sha256',key()).update(`${id}:${variant}:${expires}`).digest('hex'));}

@@ -1,0 +1,1 @@
+query Catalog($after: String) { collections(first: 50, after: $after) { nodes { id title handle descriptionHtml updatedAt seo { title description } image { url altText } } pageInfo { hasNextPage endCursor } } }

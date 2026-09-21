@@ -1,16 +1,19 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaClient as PostgresClient } from "@nosweat/postgres-client";
 
 declare global {
   // eslint-disable-next-line no-var
   var prismaGlobal: PrismaClient;
 }
 
-if (process.env.NODE_ENV !== "production") {
-  if (!global.prismaGlobal) {
-    global.prismaGlobal = new PrismaClient();
-  }
+const postgres = /^postgres(ql)?:\/\//.test(process.env.DATABASE_URL || '');
+if (process.env.VERCEL && !postgres) {
+  throw new Error('Vercel requires a PostgreSQL DATABASE_URL.');
 }
-
-const prisma = global.prismaGlobal ?? new PrismaClient();
+// Both clients are generated from the same models. Reuse connections per instance.
+const prisma = global.prismaGlobal ?? (postgres
+  ? new PostgresClient() as unknown as PrismaClient
+  : new PrismaClient());
+global.prismaGlobal = prisma;
 
 export default prisma;

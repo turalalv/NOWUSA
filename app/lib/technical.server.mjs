@@ -1,0 +1,56 @@
+import { inspectHTML } from './core/shopify.mjs';
+
+const allowedHosts = new Set(['nosweatusa.com','www.nosweatusa.com']);
+export function storefrontURL(value, base='https://nosweatusa.com') {
+  try {
+    const url=new URL(value,base);
+    if(url.protocol!=='https:'||!allowedHosts.has(url.hostname)||url.port||url.username||url.password)return null;
+    if(!/^\/(?:$|products\/|collections\/|pages\/|blogs\/|robots\.txt$|sitemap\.xml$)/.test(url.pathname))return null;
+    url.search='';url.hash='';return url.href;
+  }catch{return null;}
+}
+export async function fetchPage(input, {head=false, fetcher=fetch}={}) {
+  let url=storefrontURL(input);if(!url)throw new Error('Yalnız No Sweat USA-nın açıq səhifələri yoxlanır.');
+  const signal=AbortSignal.timeout(8000);
+  for(let i=0;i<5;i++){
+    const response=await fetcher(url,{method:head?'HEAD':'GET',redirect:'manual',signal,headers:{'user-agent':'NoSweatSEO/1.0 (owner-requested audit)'}});
+    if([301,302,303,307,308].includes(response.status)){
+      const next=storefrontURL(response.headers.get('location')||'',url);
+      await response.body?.cancel();if(!next)throw new Error('Başqa domenə və ya bağlı yola yönləndirmə izlənmədi.');url=next;continue;
+    }
+    if(head){await response.body?.cancel();return {url,status:response.status,html:''};}
+    const chunks=[];let bytes=0;
+    if(response.body)for await(const chunk of response.body){bytes+=chunk.length;if(bytes>2_500_000){throw new Error('HTML 2.5 MB yoxlama limitini keçir.');}chunks.push(chunk);}
+    return {url,status:response.status,html:Buffer.concat(chunks).toString('utf8')};
+  }
+  throw new Error('Yönləndirmə limiti keçildi.');
+}
+export function extractLinks(html,base) {
+  const markup=html.replace(/<(script|style|template)\b[^>]*>[\s\S]*?<\/\1>/gi,'');
+  const links=new Set();
+  for(const m of markup.matchAll(/<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)){
+    const url=storefrontURL((m[1]??m[2]).replaceAll('&amp;','&'),base);if(url)links.add(url);
+  }
+  return [...links];
+}
+export async function technicalAudit(pages,fetcher=fetch){
+  const inspected=[],linkSources=new Map(),warnings=[];
+  const selected=pages.filter(p=>p.url&&storefrontURL(p.url)).slice(0,30);
+  if(pages.filter(p=>p.url).length>30)warnings.push('Texniki audit ilk 30 yayımlanmış səhifəni əhatə edir.');
+  for(let offset=0;offset<selected.length;offset+=3){await Promise.all(selected.slice(offset,offset+3).map(async p=>{
+    try{
+      const r=await fetchPage(p.url,{fetcher}), html=r.status===200?inspectHTML(r.html):null;
+      inspected.push({pageId:p.id,title:p.title,url:p.url,finalURL:r.url,status:r.status,technical:html});
+      if(r.status===200)for(const link of extractLinks(r.html,r.url)){if(!linkSources.has(link))linkSources.set(link,[]);linkSources.get(link).push(p.title);}
+    }catch(error){inspected.push({pageId:p.id,title:p.title,url:p.url,status:null,error:error.message,technical:null});}
+  }));}
+  const already=new Map(inspected.filter(p=>p.status).map(p=>[storefrontURL(p.url),p.status]));
+  const links=[];const urls=[...linkSources.keys()].slice(0,60);
+  if(linkSources.size>60)warnings.push(`${linkSources.size} unikal daxili linkdən ilk 60-ı yoxlanıb.`);
+  for(let offset=0;offset<urls.length;offset+=5){await Promise.all(urls.slice(offset,offset+5).map(async url=>{
+    try{let status=already.get(url);if(!status){let r=await fetchPage(url,{head:true,fetcher});if(r.status===405)r=await fetchPage(url,{fetcher});status=r.status;}links.push({url,status,broken:[404,410].includes(status),sources:[...new Set(linkSources.get(url))]});}
+    catch(error){links.push({url,status:null,broken:false,error:error.message,sources:[...new Set(linkSources.get(url))]});}
+  }));}
+  const infrastructure=await Promise.all(['robots.txt','sitemap.xml'].map(async name=>{try{const r=await fetchPage(`https://nosweatusa.com/${name}`,{fetcher});return {name,status:r.status,valid:r.status===200&&(name==='sitemap.xml'?/<(?:sitemapindex|urlset)\b/.test(r.html):/user-agent:/i.test(r.html))};}catch{return {name,status:null,valid:false};}}));
+  return {checkedAt:new Date().toISOString(),pages:inspected.map(p=>{if(p.technical)delete p.technical.images;return p;}),links:links.sort((a,b)=>Number(b.broken)-Number(a.broken)),infrastructure,warnings};
+}

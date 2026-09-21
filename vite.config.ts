@@ -36,6 +36,7 @@ if (host === "localhost") {
 }
 
 export default defineConfig({
+  ssr: { external: ["@nosweat/postgres-client"] },
   server: {
     allowedHosts: [host],
     cors: {
