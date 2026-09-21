@@ -26,7 +26,7 @@ export default function AnalyticsOverview({data,onNavigate,onEdit}:{data:Dashboa
   const pages=data.catalog.pages, issues=pages.flatMap(p=>p.issues);
   const products=pages.filter(p=>p.type==='product').length,collections=pages.length-products;
   const score=pages.length?Math.round(pages.reduce((s,p)=>s+p.score,0)/pages.length):null;
-  const titleCount=pages.filter(p=>p.seo.title.trim()).length,descriptionCount=pages.filter(p=>p.seo.description.trim()).length;
+  const titleCount=pages.filter(p=>p.seo?.title?.trim()).length,descriptionCount=pages.filter(p=>p.seo?.description?.trim()).length;
   const titleRate=pages.length?Math.round(titleCount/pages.length*100):0,descriptionRate=pages.length?Math.round(descriptionCount/pages.length*100):0;
   const ranked=[...pages].sort((a,b)=>a.score-b.score).slice(0,7);
   const categories=[{label:'Başlık',value:issues.filter(i=>i.code.includes('title')).length},{label:'Açıklama',value:issues.filter(i=>i.code.includes('description')||i.code.includes('content')).length},{label:'Görseller',value:issues.filter(i=>i.code.includes('image')||i.code.includes('alt')).length},{label:'Diğer',value:issues.filter(i=>!/(title|description|content|image|alt)/.test(i.code)).length}];
