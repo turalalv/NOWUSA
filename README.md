@@ -4,7 +4,7 @@ No Sweat SEO Studio — Shopify embedded app
 
 Private, single-merchant app for **No Sweat USA**, rendered inside Shopify Admin → Apps. Storefront: `https://nosweatusa.com`; public storefront identifies the shop as `iyhxfe-mw.myshopify.com`.
 
-**Status (2026-09-21):** deployed to [Render Free](https://nowusa.onrender.com) with Neon Free PostgreSQL and installed in No Sweat USA. Shopify version `no-sweat-seo-2` is active. Startup migrations, HTTP health checks, embedded authentication and the initial catalog import (6 products, 2 collections) passed. Google Search Console, scheduled jobs and live product/image edits have not been verified. Production secrets are stored in Render, not in Git. The screenshots in `artifacts/` use explicitly labelled sample data.
+**Status (2026-09-21):** deployed to [Render Free](https://nowusa.onrender.com) with Neon Free PostgreSQL and installed in No Sweat USA. Shopify version `no-sweat-seo-2` is active. Startup migrations, HTTP health checks, embedded authentication and the initial catalog import (6 products, 2 collections) passed. Google Search Console OAuth and the first six-report API sync passed. Google OAuth remains in Testing mode (refresh tokens expire after 7 days); scheduled jobs and live product/image edits have not been verified. Production secrets are stored in Render, not in Git. The screenshots in `artifacts/` use explicitly labelled sample data.
 
 ## Included
 

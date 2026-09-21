@@ -43,3 +43,8 @@ final result: passed
 - [x] Actual-data charts and truthful empty states
 - [x] Working edit/navigation actions
 - [x] Recapture and review after P2 fixes
+
+## Live verification
+- Compact dashboard deployed to Render and verified inside Shopify Admin with 6 products and 2 collections. Search Console connected and all six API reports imported successfully.
+- Live catalog exposed nullable SEO fields; fixed optional access and added a server-render regression test. All 11 test files and production build pass.
+- Initial hydration reported text mismatch; made the header timestamp explicit UTC so server and browser render the same text. Browser extensions also mutate the document.

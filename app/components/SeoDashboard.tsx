@@ -10,7 +10,7 @@ type Props = {data:Dashboard;busy:boolean;result?:ActionResult;onAction:(input:A
 const tabs = ["ABD müşterileri","Genel bakış","Sayfalar","Anahtar kelimeler","Dahili bağlantılar","Görseller","Görsel sıkıştırma","Backlinkler","Teknik SEO","Google sonuçları","Taslaklar","Geçmiş"] as const;
 type Tab = typeof tabs[number];
 const number = (n:number) => new Intl.NumberFormat('tr-TR').format(n);
-const date = (s:string|null) => s?new Date(s).toLocaleString('tr-TR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):"Henüz kontrol edilmedi";
+const date = (s:string|null) => s?`${new Date(s).toLocaleString('tr-TR',{timeZone:'UTC',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} UTC`:"Henüz kontrol edilmedi";
 const priority = {high:"Yüksek",medium:'Orta',low:"İncele"};
 function TextPair({before,after}:{before:SEO;after:SEO}) {return <div className="seo-comparison"><div><s-text color="subdued">ÖNCE</s-text><h3>{before.title||"Özel başlık yok"}</h3><p>{before.description||"Özel meta açıklama yok"}</p></div><div className="seo-after"><s-text color="subdued">ÖNERİLEN</s-text><h3>{after.title}</h3><p>{after.description||"Açıklama boş"}</p></div></div>;}
 function Empty({heading,text}:{heading:string;text:string}){return <div className="seo-empty"><s-icon type="search"/><s-heading>{heading}</s-heading><s-paragraph color="subdued">{text}</s-paragraph></div>;}
