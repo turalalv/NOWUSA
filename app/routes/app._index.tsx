@@ -1,4 +1,4 @@
-import {suiteData,reportCSV} from '../lib/seo-suite.server.mjs';
+import {suiteData,reportCSV,organicCSV} from '../lib/seo-suite.server.mjs';
 import type {SuiteData} from '../components/SeoSuitePanel';
 import {shopifyBoundaryError} from '../lib/shopify-boundary';
 import { useEffect } from 'react';
@@ -37,9 +37,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if((['google-connect','google-disconnect','google-settings'].includes(input.intent)||['suite-settings','suite-provider','suite-daily','suite-audit-settings','suite-audit'].includes(input.intent))&&!canManageGoogle(session))throw new Error("Google bağlantısını yönetmek için mağaza sahibi veya ayrıca yetkilendirilmiş bir kullanıcı olmalısınız.");
     if(input.intent==='google-connect')return {ok:true,connectURL:await prepareGoogle(db,session.shop)};
     if(input.intent==='refresh')return {ok:true};
-    if (input.intent === 'suite-export') {
+    if (['suite-export','suite-organic-export'].includes(input.intent)) {
       const row=await ensureWorkspace(db,session.shop);
-      return {ok:true,download:reportCSV(suiteData(JSON.parse(row.data))),filename:'nowusa-seo-merkezi.csv'};
+      return {ok:true,download:(input.intent==='suite-organic-export'?organicCSV:reportCSV)(suiteData(JSON.parse(row.data))),filename:input.intent==='suite-organic-export'?'nowusa-organik-siralamalar.csv':'nowusa-seo-merkezi.csv'};
     }
     if (input.intent === 'export') {
       const row = await ensureWorkspace(db, session.shop);

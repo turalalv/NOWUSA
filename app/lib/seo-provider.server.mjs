@@ -29,6 +29,15 @@ export async function fetchSuiteProvider(s,kind,request=providerRequest,deadline
  if(kind==='keywords'){
   if(!s.settings.keywords.length)throw new Error('Önce araştırılacak ifadeleri kaydedin.');const result=await call('dataforseo_labs/google/keyword_overview/live',{...locale,keywords:s.settings.keywords});return {...meta,rows:(result.items||[]).map(metrics),limited:false};
  }
+ if(kind==='organic'){
+  const r=await call('dataforseo_labs/google/ranked_keywords/live',{...locale,target:OWN_DOMAIN,limit:1000,filters:[['ranked_serp_element.serp_item.type','=','organic'],'and',['ranked_serp_element.serp_item.rank_group','<=',100]],order_by:['ranked_serp_element.serp_item.rank_group,asc']});
+  if(!Array.isArray(r.items)&&r.total_count!==0)throw new Error('Organik sıralama yanıtı eksik; önceki rapor korundu.');
+  const rows=(r.items||[]).filter(i=>i.ranked_serp_element?.serp_item?.type==='organic'&&!i.ranked_serp_element.is_lost&&ownURL(i.ranked_serp_element.serp_item.url)).map(i=>({...metrics(i.keyword_data),position:i.ranked_serp_element.serp_item.rank_group,traffic:i.ranked_serp_element.serp_item.etv??null,trafficCost:i.ranked_serp_element.serp_item.estimated_paid_traffic_cost??null,cpc:i.keyword_data.keyword_info?.cpc??null,intent:i.keyword_data.search_intent_info?.main_intent??null,isNew:i.ranked_serp_element.serp_item.rank_changes?.is_new===true,serpFeatures:i.ranked_serp_element.serp_item_types||[],url:safeURL(i.ranked_serp_element.serp_item.url),serpUpdatedAt:i.ranked_serp_element.last_updated_time||null}));
+  if(rows.some(i=>!i.keyword||!Number.isInteger(i.position)||i.position<1||i.position>100))throw new Error('Organik sıralama değeri geçersiz; önceki rapor korundu.');
+  const unique=[...new Map(rows.sort((a,b)=>b.position-a.position).map(r=>[r.keyword,r])).values()];
+  const lostRows=(r.items||[]).filter(i=>i.ranked_serp_element?.is_lost===true&&ownURL(i.ranked_serp_element.serp_item?.url)).map(i=>({...metrics(i.keyword_data),url:safeURL(i.ranked_serp_element.serp_item.url),position:null,status:'lost'}));
+  return {...meta,lostRows,domain:OWN_DOMAIN,device:'desktop',totalCount:r.total_count??null,limited:r.total_count==null||r.total_count>unique.length,rows:unique};
+ }
  if(kind==='gaps'){
   if(!s.settings.competitors.length)throw new Error('Önce rakip alan adlarını kaydedin.');const reports={};
   for(const target of [OWN_DOMAIN,...s.settings.competitors]){const r=await call('dataforseo_labs/google/ranked_keywords/live',{...locale,target,limit:1000,filters:['ranked_serp_element.serp_item.type','=','organic']});reports[target]={...meta,domain:target,device:'desktop',limited:(r.total_count||0)>(r.items?.length||0),rows:(r.items||[]).map(i=>({...metrics(i.keyword_data),position:i.ranked_serp_element?.serp_item?.rank_group??null,url:safeURL(i.ranked_serp_element?.serp_item?.url)})).filter(r=>r.keyword&&r.position>0)};}return reports;

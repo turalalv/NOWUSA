@@ -2,6 +2,7 @@
 
 Dashboard section: `/app?section=seo-suite`. The legacy `/app/seo-suite` URL redirects to this section. All user-facing controls use Turkish.
 
+- **Organik sıralamalar:** own-domain Google USA/English desktop organic keyword discovery without a tracking list or competitor setup. One manual DataForSEO Labs request, maximum 1,000 top-100 organic rows, weekly provider index; CSV up to 2,000 rows. Overview, positions, position changes and pages views; keyword/URL/intent/volume/difficulty filters, position ranges, traffic/volume/change sorting, report-scoped traffic and cost estimates, snapshot trend charts, 30 report snapshots, matching-source comparisons, and dedicated CSV export. Explicit provider new/lost flags only; SERP features describe the query, not guaranteed ownership. Missing keywords are not classified as lost. This new manual action does not add paid calls to existing schedules.
 - **Konum takibi:** USA/English organic rank snapshots, desktop and mobile, 100-result scope. Up to 10 tracked phrases, daily history (60 snapshots). Provider data or a real CSV; unknown positions are never invented.
 - **Rakip kelime farkı:** own domain and up to three competitors. Match date/provider/country/language/device before comparing. An absent keyword means absent from the supplied report, not proof of no ranking. API imports at most 1,000 rows per domain.
 - **Kelime araştırması:** provider search-volume estimates and provider-specific SEO difficulty. Missing values remain unknown.

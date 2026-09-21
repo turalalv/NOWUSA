@@ -1,10 +1,11 @@
+import {saveOrganicReport,organicRankings,organicCSV} from './organic-rankings.mjs';
 import crypto from 'node:crypto';
 import {validateAuditConfig} from './audit-config.mjs';
 import {suiteState,suiteSettings,importSuiteCSV,keywordGap,rankChanges,reportCSV} from './seo-suite.mjs';
 import {fetchSuiteProvider,providerConfigured} from './seo-provider.server.mjs';
 import {advancedAudit,pageSpeed} from './seo-audit.server.mjs';
 import {selectSearchReports,searchMetrics} from './search-reports.mjs';
-export function suiteData(state){const s=suiteState(state);return {...s,gaps:keywordGap(s),rankChanges:rankChanges(s),providerConfigured:providerConfigured()};}
+export function suiteData(state){const s=suiteState(state),result={...s,organic:organicRankings(s),gaps:keywordGap(s),rankChanges:rankChanges(s),providerConfigured:providerConfigured()};delete result.organicReports;return result;}
 export function generateDigest(state,now=new Date()){
  const s=suiteState(state),audit=s.audits.at(-1),at=now.toISOString(),day=at.slice(0,10),items=[];
  const emit=(key,title,detail)=>items.push({id:crypto.createHash('sha256').update(key).digest('hex').slice(0,20),at,title,detail,read:false});
@@ -19,14 +20,14 @@ export function generateDigest(state,now=new Date()){
 }
 async function refreshProvider(s,kind,fetcher=fetchSuiteProvider){
  const report=await fetcher(s,kind);
- if(kind==='ranks'){s.ranks=s.ranks.filter(r=>r.observedAt!==report.observedAt||r.provider!==report.provider);s.ranks.push(report);s.ranks=s.ranks.slice(-60);}else if(kind==='gaps')s.domainReports={...s.domainReports,...report};else s[kind]=report;
+ if(kind==='ranks'){s.ranks=s.ranks.filter(r=>r.observedAt!==report.observedAt||r.provider!==report.provider);s.ranks.push(report);s.ranks=s.ranks.slice(-60);}else if(kind==='organic'){saveOrganicReport(s,report);s.domainReports[report.domain]=report;}else if(kind==='gaps')s.domainReports={...s.domainReports,...report};else s[kind]=report;
 }
 export async function suiteOperation(state,input,deps={}){
  const s=suiteState(state),audit=deps.audit||advancedAudit,provider=deps.provider||fetchSuiteProvider;
  switch(input.intent){
   case 'suite-settings':if(input.providerAuto==='true'&&!providerConfigured())throw new Error('Otomatik ücretli veri için önce API hesabı yapılandırılmalıdır.');suiteSettings(state,input);return 'SEO Merkezi ayarları kaydedildi.';
   case 'suite-import':return `${importSuiteCSV(state,input)} gerçek veri satırı içe aktarıldı.`;
-  case 'suite-provider':if(!['ranks','gaps','keywords','backlinks'].includes(input.kind))throw new Error('Rapor türü geçersiz.');await refreshProvider(s,input.kind,provider);generateDigest(state);return 'SEO sağlayıcısı raporu getirildi.';
+  case 'suite-provider':if(!['organic','ranks','gaps','keywords','backlinks'].includes(input.kind))throw new Error('Rapor türü geçersiz.');await refreshProvider(s,input.kind,provider);generateDigest(state);return 'SEO sağlayıcısı raporu getirildi.';
   case 'suite-audit-settings':s.auditConfig=validateAuditConfig(JSON.parse(input.config||'{}'));return 'Denetim yapılandırması kaydedildi.';
   case 'suite-audit':{const config=validateAuditConfig(input.config?JSON.parse(input.config):s.auditConfig);const report=await audit(state.catalog.pages,undefined,config);s.auditConfig=config;s.audits.push(report);s.audits=s.audits.slice(-10);generateDigest(state);return 'Geniş teknik denetim tamamlandı.';}
   case 'suite-speed':s.speed=await (deps.speed||pageSpeed)();return s.speed.rows.some(r=>r.error)?'Bazı hız ölçümleri alınamadı; ayrıntıları kontrol edin.':'PageSpeed ölçümleri getirildi.';
@@ -43,4 +44,4 @@ export async function suiteOperation(state,input,deps={}){
   default:throw new Error('SEO Merkezi işlemi bulunamadı.');
  }
 }
-export {reportCSV};
+export {reportCSV,organicCSV};
