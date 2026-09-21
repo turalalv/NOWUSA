@@ -41,17 +41,19 @@ export async function fetchGoogleReport(oauth,property,startDate,endDate,{dimens
  const rows=[];let truncated=false;const rowLimit=Math.min(25000,maxRows);
  for(let startRow=0;startRow<maxRows;startRow+=rowLimit){
   const data={startDate,endDate,dimensions,type:'web',dataState:'final',rowLimit,startRow};
+  if(!dimensions.length)data.aggregationType='byProperty';
   if(country)data.dimensionFilterGroups=[{groupType:'and',filters:[{dimension:'country',operator:'equals',expression:country}]}];
   const r=await oauth.request({url:`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`,method:'POST',timeout:20000,data});
   const batch=r.data.rows||[];
   for(const row of batch){
-   if(!Array.isArray(row.keys)||row.keys.length!==dimensions.length||![row.clicks,row.impressions,row.position].every(n=>Number.isFinite(n)&&n>=0)||row.clicks>row.impressions)throw new Error("Google raporunun biçimi geçerli değil.");
-   const values=Object.fromEntries(dimensions.map((dimension,i)=>[dimension,row.keys[i]]));
+   const keys=row.keys||[];
+   if(!Array.isArray(keys)||keys.length!==dimensions.length||![row.clicks,row.impressions,row.position].every(n=>Number.isFinite(n)&&n>=0)||row.clicks>row.impressions)throw new Error("Google raporunun biçimi geçerli değil.");
+   const values=Object.fromEntries(dimensions.map((dimension,i)=>[dimension,keys[i]]));
    rows.push({page:values.page||'',query:values.query||'',...(values.date?{date:values.date}:{}),clicks:row.clicks,impressions:row.impressions,ctr:row.impressions?row.clicks/row.impressions:0,position:row.position});
   }
   if(batch.length<rowLimit)break;if(startRow+rowLimit>=maxRows)truncated=true;
  }
- const grain=dimensions.includes('date')?'page-date':dimensions.includes('query')?'page-query':'page';
+ const grain=!dimensions.length?'property':dimensions.includes('date')?'page-date':dimensions.includes('query')?'page-query':'page';
  return {property,startDate,endDate,grain,country:country||'all',device:'all',searchType:'web',rows,importedAt:new Date().toISOString(),source:'google-api',truncated};
 }
 export async function syncGoogle(db,shop,state,oauthFactory=client){
@@ -59,18 +61,24 @@ export async function syncGoogle(db,shop,state,oauthFactory=client){
  const oauth=oauthFactory();oauth.setCredentials(unseal(row.tokens,shop));let reports,detailed;
  try{
   await oauth.getAccessToken();reports=[];detailed=[];
-  for(const [start,end] of dateRange()){
-   reports.push(await fetchGoogleReport(oauth,row.property,start,end,{country:'usa'}));
-   detailed.push(await fetchGoogleReport(oauth,row.property,start,end,{country:'usa',dimensions:['query','page'],maxRows:10000}));
-   detailed.push(await fetchGoogleReport(oauth,row.property,start,end,{country:'usa',dimensions:['page','date'],maxRows:10000}));
+  for(const country of ['usa',null])for(const [start,end] of dateRange()){
+   const [pages,queries,daily,total]=await Promise.all([
+    fetchGoogleReport(oauth,row.property,start,end,{country}),
+    fetchGoogleReport(oauth,row.property,start,end,{country,dimensions:['query','page'],maxRows:10000}),
+    fetchGoogleReport(oauth,row.property,start,end,{country,dimensions:['page','date'],maxRows:10000}),
+    fetchGoogleReport(oauth,row.property,start,end,{country,dimensions:[],maxRows:1}),
+   ]);
+   // An ungrouped property report has at most one row; it is a complete total.
+   total.truncated=false;
+   reports.push(pages);detailed.push(queries,daily,total);
   }
  }catch{throw new Error("Google raporu alınamadı. Hesap iznini ve API bağlantısını kontrol edin; gerekirse yeniden bağlanın.");}
  const saved=await db.googleConnection.updateMany({where:{shop,tokens:row.tokens},data:{tokens:seal(oauth.credentials,shop),syncedAt:new Date()}});if(!saved.count)throw new Error("Google bağlantısı değişti; işlemi tekrarlayın.");
- // No workspace changes until all six requests succeed. USA and global reports never overwrite each other.
+ // No workspace changes until all requests succeed. USA and global reports never overwrite each other.
  state.gsc=state.gsc.filter(r=>!reports.some(n=>n.property===r.property&&n.grain===r.grain&&n.country===r.country&&n.startDate===r.startDate&&n.endDate===r.endDate));state.gsc.push(...reports);state.gsc=state.gsc.slice(-24);
  state.growth||={};state.growth.reports=detailed;
  state.growth.syncedAt=new Date().toISOString();
- return [...reports,...detailed].some(r=>r.truncated)?"ABD raporları getirildi. Bazı raporlarda satır sınırına ulaşıldı; kısıtlama panelde gösterilir.":"ABD için ürün, anahtar kelime ve günlük Google raporları getirildi.";
+ return [...reports,...detailed].some(r=>r.truncated)?"Tüm ülkeler ve ABD raporları getirildi. Bazı raporlarda satır sınırına ulaşıldı; kısıtlama panelde gösterilir.":"Tüm ülkeler ve ABD için Google raporları getirildi.";
 }
 
 export async function disconnectGoogle(db,shop){

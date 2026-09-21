@@ -4,7 +4,7 @@ No Sweat SEO Studio — Shopify embedded app
 
 Private, single-merchant app for **No Sweat USA**, rendered inside Shopify Admin → Apps. Storefront: `https://nosweatusa.com`; public storefront identifies the shop as `iyhxfe-mw.myshopify.com`.
 
-**Status (2026-09-21):** deployed to [Render Free](https://nowusa.onrender.com) with Neon Free PostgreSQL and installed in No Sweat USA. Shopify version `no-sweat-seo-2` is active. Startup migrations, HTTP health checks, embedded authentication and the initial catalog import (6 products, 2 collections) passed. Google Search Console OAuth and the first six-report API sync passed. Google OAuth remains in Testing mode (refresh tokens expire after 7 days); scheduled jobs and live product/image edits have not been verified. Production secrets are stored in Render, not in Git. The screenshots in `artifacts/` use explicitly labelled sample data.
+**Status (2026-09-21):** deployed to [Render Free](https://nowusa.onrender.com) with Neon Free PostgreSQL and installed in No Sweat USA. Shopify version `no-sweat-seo-2` is active. Startup migrations, HTTP health checks, embedded authentication and the initial catalog import (6 products, 2 collections) passed. Google Search Console OAuth and the initial API sync passed. Google OAuth remains in Testing mode (refresh tokens expire after 7 days); scheduled jobs and live product/image edits have not been verified. Production secrets are stored in Render, not in Git. The screenshots in `artifacts/` use explicitly labelled sample data.
 
 ## Included
 
@@ -107,3 +107,7 @@ Local preview: `npm run preview:competitors`, then open `http://localhost:8790`.
 The **Rəqib SEO** navigation item opens `/app/competitors`. Import one `pages.json` file from `sweatblock-seo-scraper/output/sweatblock/` or `output/certaindri/` at a time (up to 2.5 MB and 500 pages). Each import replaces that domain’s prior report under the existing per-shop workspace lock. The panel displays titles, descriptions, H1, meta keywords, crawl timestamps, audit notes, and searchable phrase frequencies. These are extracted text phrases, not search-volume, ranking, or backlink-index data. The importer makes no network requests or Shopify catalog changes. Run the crawler separately; scheduled crawling is not wired into this panel.
 
 Local TypeScript, tests, and production build pass for this integration; live installation and hosting remain unverified. The current TOML has a client ID, but its application and callback URLs are still placeholders.
+
+### Search Console reports
+
+Use **Google ile bağlan**, select an authorized store property from Google, then **Google raporunu getir**. No domain entry is needed for OAuth. Reports separate **Tüm ülkeler** and **ABD**, with current and previous finalized 28-day periods. Headline metrics use ungrouped `byProperty` totals; page, query/page and daily/page detail tables retain their separate aggregation. API privacy and row limits are shown; missing reports are not presented as zeros. This private app lists properties belonging to the connected No Sweat USA store. CSV import remains under an optional disclosure.
