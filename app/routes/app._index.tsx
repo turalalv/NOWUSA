@@ -6,6 +6,7 @@ import { useAppBridge } from '@shopify/app-bridge-react';
 import { authenticate } from '../shopify.server';
 import db from '../db.server';
 import {googleStatus,prepareGoogle} from '../lib/google.server.mjs';
+import {canManageGoogle} from '../lib/google-permissions.server.mjs';
 import {compressionList} from '../lib/compression.server.mjs';
 import {key} from '../lib/secrets.server.mjs';
 import { assertAllowedShop, ensureWorkspace, dashboardData, performOperation, exportAudit } from '../lib/workspace.server.mjs';
@@ -21,7 +22,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const changes = await db.seoChange.findMany({ where: { shop: session.shop }, orderBy: { createdAt: 'desc' }, take: 50 });
   const data = dashboardData(JSON.parse(row.data), changes);
   let compressionConfigured=false;try{key();compressionConfigured=true;}catch{}
-  return { ...data, google:await googleStatus(db,session.shop),compressions:await compressionList(db,session.shop),compressionConfigured,canManageGoogle:Boolean(session.onlineAccessInfo?.associated_user.account_owner),canWrite: session.scope?.split(',').includes('write_products') || false, canWriteFiles: session.scope?.split(',').includes('write_files') || false } as Dashboard;
+  return { ...data, google:await googleStatus(db,session.shop),compressions:await compressionList(db,session.shop),compressionConfigured,canManageGoogle:canManageGoogle(session),canWrite: session.scope?.split(',').includes('write_products') || false, canWriteFiles: session.scope?.split(',').includes('write_files') || false } as Dashboard;
 };
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -30,7 +31,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const text = await request.text();
     if (text.length > 3_000_000) throw new Error('Sorğu ölçüsü 3 MB limitini keçir.');
     const input = JSON.parse(text) as ActionInput;
-    if(['google-connect','google-disconnect','google-settings'].includes(input.intent)&&!session.onlineAccessInfo?.associated_user.account_owner)throw new Error('Google bağlantısını mağaza sahibi idarə etməlidir.');
+    if(['google-connect','google-disconnect','google-settings'].includes(input.intent)&&!canManageGoogle(session))throw new Error('Google bağlantısını idarə etmək üçün mağaza sahibi və ya ayrıca icazə verilmiş istifadəçi olmalısan.');
     if(input.intent==='google-connect')return {ok:true,connectURL:await prepareGoogle(db,session.shop)};
     if(input.intent==='refresh')return {ok:true};
     if (input.intent === 'export') {
