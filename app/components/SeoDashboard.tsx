@@ -1,3 +1,5 @@
+import SeoSuitePanel from './SeoSuitePanel';
+import type {SuiteData} from './SeoSuitePanel';
 import { useState } from 'react';
 import type { ActionInput, ActionResult, Dashboard, Draft, Page, SEO } from '../lib/types';
 import './seo.css';
@@ -7,8 +9,8 @@ import GoogleReports from './GoogleReports';
 import {GoogleConnectionView,CompressionView,BacklinksView} from './Integrations';
 import { ImagesView, TechnicalView } from './PremiumFeatures';
 
-type Props = {data:Dashboard;busy:boolean;result?:ActionResult;onAction:(input:ActionInput)=>void};
-const tabs = ["ABD müşterileri","Genel bakış","Sayfalar","Anahtar kelimeler","Dahili bağlantılar","Görseller","Görsel sıkıştırma","Backlinkler","Teknik SEO","Google sonuçları","Taslaklar","Geçmiş"] as const;
+type Props = {suite?:SuiteData;suiteOpen?:boolean;onSuiteOpen?:(open:boolean)=>void;data:Dashboard;busy:boolean;result?:ActionResult;onAction:(input:ActionInput)=>void};
+const tabs = ["ABD müşterileri","Genel bakış","Sayfalar","Anahtar kelimeler","Dahili bağlantılar","Görseller","Görsel sıkıştırma","Backlinkler","Teknik SEO","SEO Merkezi","Google sonuçları","Taslaklar","Geçmiş"] as const;
 type Tab = typeof tabs[number];
 const number = (n:number) => new Intl.NumberFormat('tr-TR').format(n);
 const date = (s:string|null) => s?`${new Date(s).toLocaleString('tr-TR',{timeZone:'UTC',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} UTC`:"Henüz kontrol edilmedi";
@@ -37,8 +39,9 @@ function GoogleImport({onAction,busy}:{onAction:Props['onAction'];busy:boolean})
   const [start,setStart]=useState(''),[end,setEnd]=useState(''),[property,setProperty]=useState('sc-domain:nosweatusa.com'),[csv,setCsv]=useState(''),[error,setError]=useState('');
   return <s-section heading="Search Console CSV ekle"><s-stack direction="block" gap="base"><s-paragraph>Search Console → Performance → Search results → Export. ZIP dosyasını açın; İngilizce Pages.csv veya Queries.csv dosyasını seçin.</s-paragraph><div className="seo-form-grid"><s-date-field label="Başlangıç tarihi" value={start} onChange={e=>setStart(e.currentTarget.value)}/><s-date-field label="Bitiş tarihi" value={end} onChange={e=>setEnd(e.currentTarget.value)}/></div><s-text-field label="Mülk" value={property} onInput={e=>setProperty(e.currentTarget.value)}/><label className="seo-file-label">CSV dosyası (en fazla 2 MB)<input aria-label="Search Console CSV dosyası" type="file" accept=".csv,text/csv" onChange={async e=>{const file=(e.currentTarget as HTMLInputElement).files?.[0];setError('');setCsv('');if(!file)return;if(file.size>2_000_000){setError("Dosya 2 MB’den büyük.");return;}setCsv(await file.text());}}/></label>{error&&<s-banner tone="critical">{error}</s-banner>}<s-button variant="primary" disabled={busy||!csv||!start||!end||!property} onClick={()=>onAction({intent:'gsc-import',csv,startDate:start,endDate:end,property})}>İçe aktar</s-button><s-paragraph color="subdued">Tarihleri ve ülke/cihaz/arama türü filtrelerini dışa aktarımla aynı tutun. Yukarıdaki bölümden Google hesabını bağlayarak CSV olmadan da rapor getirebilirsiniz.</s-paragraph></s-stack></s-section>;
 }
-export default function SeoDashboard({data,busy,result,onAction}:Props){
-  const [tab,setTab]=useState<Tab>("Genel bakış"),[search,setSearch]=useState(''),[kind,setKind]=useState('all'),[selected,setSelected]=useState<string|null>(null),[confirm,setConfirm]=useState<Draft|null>(null),[copied,setCopied]=useState(''),[bulk,setBulk]=useState<Draft[]>([]);
+export default function SeoDashboard({data,busy,result,onAction,suite,suiteOpen=false,onSuiteOpen}:Props){
+  const [localTab,setTab]=useState<Tab>("Genel bakış"),[search,setSearch]=useState(''),[kind,setKind]=useState('all'),[selected,setSelected]=useState<string|null>(null),[confirm,setConfirm]=useState<Draft|null>(null),[copied,setCopied]=useState(''),[bulk,setBulk]=useState<Draft[]>([]);
+  const tab=suiteOpen?"SEO Merkezi":localTab;
   const [handledResult,setHandledResult]=useState(result);
   if(result!==handledResult){setHandledResult(result);if(result?.ok){setConfirm(null);setBulk([]);if(result.message?.startsWith("Taslak kaydedildi")){setSelected(null);setTab("Taslaklar");}}}
   const pages=data.catalog.pages,issues=pages.flatMap(p=>p.issues.map(i=>({...i,page:p})));
@@ -47,20 +50,20 @@ export default function SeoDashboard({data,busy,result,onAction}:Props){
   const keywordCounts=Object.values(data.mappings).reduce<Record<string,number>>((a,k)=>{if(k.trim())a[k.toLowerCase()]=(a[k.toLowerCase()]||0)+1;return a;},{});
   const pageTable=(items:Page[]) => <s-table><s-table-header-row><s-table-header listSlot="primary">Sayfa</s-table-header><s-table-header>Tür</s-table-header><s-table-header>Kontrol puanı</s-table-header><s-table-header>Bulgular</s-table-header><s-table-header>İşlem</s-table-header></s-table-header-row><s-table-body>{items.map(p=><s-table-row key={p.id}><s-table-cell><strong>{p.title}</strong><div className="seo-url">/{p.type==='product'?'products':'collections'}/{p.handle}</div></s-table-cell><s-table-cell><s-badge>{p.type==='product'?"Ürün":'Koleksiyon'}</s-badge></s-table-cell><s-table-cell>{p.score}/100</s-table-cell><s-table-cell>{p.issues.length?<s-badge tone={p.issues.some(i=>i.severity==='high')?'critical':'warning'}>{p.issues.length} bulgu</s-badge>:<s-badge tone="success">Geçti</s-badge>}</s-table-cell><s-table-cell><s-button disabled={busy} onClick={()=>setSelected(p.id)}>İncele</s-button></s-table-cell></s-table-row>)}</s-table-body></s-table>;
   const topIssues=[...issues].sort((a,b)=>({high:0,medium:1,low:2}[a.severity]-{high:0,medium:1,low:2}[b.severity])).slice(0,5);
-  const navigate=(section:string)=>{if(!(tabs as readonly string[]).includes(section))return;setTab(section as Tab);setSelected(null);setConfirm(null);setBulk([]);};
-  const icons = ['target','home','collection','search','link','image','arrows-in-horizontal','connect','code','chart-line','compose','clock'] as const;
+  const navigate=(section:string)=>{if(!(tabs as readonly string[]).includes(section))return;setTab(section==='SEO Merkezi'?'Genel bakış':section as Tab);onSuiteOpen?.(section==='SEO Merkezi');setSelected(null);setConfirm(null);setBulk([]);};
+  const icons = ['target','home','collection','search','link','image','arrows-in-horizontal','connect','code','search','chart-line','compose','clock'] as const;
   return <div className="studio-shell">
     <a className="studio-skip" href="#studio-content">İçeriğe geç</a>
     <aside className="studio-sidebar" aria-label="Uygulama menüsü">
       <button className="studio-mark" aria-label="No Sweat SEO ana sayfa" title="No Sweat SEO" onClick={()=>navigate('Genel bakış')}><s-icon type="store"/></button>
       <nav className="studio-navigation" aria-label="SEO bölümleri">{tabs.map((t,i)=><button key={t} className={tab===t?'studio-nav-item active':'studio-nav-item'} aria-label={t} aria-current={tab===t?'page':undefined} title={t} onClick={()=>navigate(t)}><s-icon type={icons[i]}/><span>{t}</span>{t==='Taslaklar'&&data.drafts.length>0&&<small>{data.drafts.length}</small>}</button>)}</nav>
-      <div className="studio-nav-extras"><a href="/app/seo-suite" title="SEO Merkezi" aria-label="SEO Merkezi"><s-icon type="search"/></a><a href="/app/competitors" title="Rakip SEO" aria-label="Rakip SEO"><s-icon type="chart-vertical"/></a><a href="/app/backlink-import" title="Backlink karşılaştırması" aria-label="Backlink karşılaştırması"><s-icon type="import"/></a></div>
+      <div className="studio-nav-extras"><a href="/app/competitors" title="Rakip SEO" aria-label="Rakip SEO"><s-icon type="chart-vertical"/></a><a href="/app/backlink-import" title="Backlink karşılaştırması" aria-label="Backlink karşılaştırması"><s-icon type="import"/></a></div>
     </aside>
     <main className="studio-main" id="studio-content">
-      <header className="studio-header"><div><span className="studio-eyebrow">NO SWEAT USA / SEO STUDIO</span><h1>{current?current.title:tab}</h1><p>Son güncelleme: {date(data.catalog.syncedAt)}</p></div><div className="studio-header-actions"><button className="studio-export" disabled={busy||!pages.length} onClick={()=>onAction({intent:'export'})}><s-icon type="export"/> Denetim CSV</button><button className="studio-primary" disabled={busy} onClick={()=>onAction({intent:'sync'})}><s-icon type="refresh"/>{busy?'İşleniyor…':'Kataloğu kontrol et'}</button></div></header>
+      <header className="studio-header"><div><span className="studio-eyebrow">NO SWEAT USA / SEO STUDIO</span><h1>{current?current.title:tab}</h1><p>Son güncelleme: {date(data.catalog.syncedAt)}</p></div><div className="studio-header-actions">{tab!=="SEO Merkezi"&&<><button className="studio-export" disabled={busy||!pages.length} onClick={()=>onAction({intent:'export'})}><s-icon type="export"/> Denetim CSV</button><button className="studio-primary" disabled={busy} onClick={()=>onAction({intent:'sync'})}><s-icon type="refresh"/>{busy?'İşleniyor…':'Kataloğu kontrol et'}</button></>}</div></header>
       <div className="studio-content" aria-busy={busy}>
-      {result?.error&&<s-banner tone="critical" heading="İşlem başarısız">{result.error}</s-banner>}
-      {result?.message&&<s-banner tone="success">{result.message}</s-banner>}
+      {tab!=="SEO Merkezi"&&result?.error&&<s-banner tone="critical" heading="İşlem başarısız">{result.error}</s-banner>}
+      {tab!=="SEO Merkezi"&&result?.message&&<s-banner tone="success">{result.message}</s-banner>}
       {!data.canWrite&&<s-banner tone="info">Salt okunur mod. Canlı uygulama için mağaza sahibinin uygulamaya write_products izni vermesi gerekir.</s-banner>}
       {current?<Editor key={current.id} page={current} draft={data.drafts.find(d=>d.pageId===current.id)} busy={busy} onAction={onAction} onClose={()=>setSelected(null)}/>:<>
       {tab==="ABD müşterileri"&&<GrowthPanel data={data} busy={busy} onAction={onAction} onEdit={setSelected} onNavigate={section=>{if((tabs as readonly string[]).includes(section))setTab(section as Tab);}}/>}
@@ -69,6 +72,7 @@ export default function SeoDashboard({data,busy,result,onAction}:Props){
       {tab==="Anahtar kelimeler"&&<s-section heading="Anahtar kelime haritası"><s-paragraph color="subdued">Her sayfaya ürüne uygun bir ana ifade atayın. Yinelenen hedef uyarısı, otomatik olarak rekabet sorunu olduğunu kanıtlamaz. Bu araç arama hacmini hesaplamaz.</s-paragraph><s-table><s-table-header-row><s-table-header>Sayfa</s-table-header><s-table-header>Hedef ifade</s-table-header><s-table-header>Durum</s-table-header></s-table-header-row><s-table-body>{pages.map(p=><KeywordRow key={p.id} page={p} busy={busy} mapping={data.mappings[p.id]||''} duplicate={keywordCounts[(data.mappings[p.id]||'').toLowerCase()]>1} onAction={onAction}/>)}</s-table-body></s-table></s-section>}
       {tab==="Dahili bağlantılar"&&<s-section heading="Dahili bağlantı önerileri"><s-paragraph color="subdued">Başlık ve etiketlerdeki ortak kelimelere dayanır. HTML’yi yalnızca bağlantının faydalı olduğu metne ekleyin. Bağlantılar otomatik yerleştirilmez.</s-paragraph>{copied&&<s-banner tone="info">{copied}</s-banner>}{data.links.length?data.links.map(l=><div className="seo-link-row" key={`${l.fromId}-${l.toId}`}><div><small>BU SAYFADAN</small><strong>{l.fromTitle}</strong></div><span>→</span><div><small>BU SAYFAYA</small><strong>{l.toTitle}</strong><p>Ortak kelimeler: {l.common.join(', ')}</p></div><s-button onClick={async()=>{const html=`<a href="${l.toUrl.replaceAll('&','&amp;').replaceAll('"','&quot;')}">${l.anchor.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</a>`;try{await navigator.clipboard.writeText(html);setCopied("Bağlantı HTML’si kopyalandı.");}catch{setCopied(html);}}}>HTML’yi kopyala</s-button></div>):<Empty heading="Uygun bağlantı önerisi yok" text="İlgili sayfalar getirildikçe başlık ve etiketlere göre öneriler burada görünecek."/>}</s-section>}
       {tab==="Görseller"&&<ImagesView data={data} busy={busy} onAction={onAction}/>}
+      {tab==="SEO Merkezi"&&suite&&<SeoSuitePanel embedded data={suite} busy={busy} result={result} canManage={Boolean(data.canManageGoogle)} onAction={onAction}/>}
       {tab==="Teknik SEO"&&<TechnicalView data={data} busy={busy} onAction={onAction}/>}
       {tab==="Görsel sıkıştırma"&&<CompressionView data={data} busy={busy} onAction={onAction}/>}
       {tab==="Backlinkler"&&<BacklinksView data={data} busy={busy} onAction={onAction}/>}

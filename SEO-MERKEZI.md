@@ -1,6 +1,6 @@
 # SEO Merkezi
 
-Separate embedded module: `/app/seo-suite`. All user-facing controls use Turkish.
+Dashboard section: `/app?section=seo-suite`. The legacy `/app/seo-suite` URL redirects to this section. All user-facing controls use Turkish.
 
 - **Konum takibi:** USA/English organic rank snapshots, desktop and mobile, 100-result scope. Up to 10 tracked phrases, daily history (60 snapshots). Provider data or a real CSV; unknown positions are never invented.
 - **Rakip kelime farkı:** own domain and up to three competitors. Match date/provider/country/language/device before comparing. An absent keyword means absent from the supplied report, not proof of no ranking. API imports at most 1,000 rows per domain.

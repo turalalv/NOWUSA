@@ -1,7 +1,9 @@
+import {suiteData,reportCSV} from '../lib/seo-suite.server.mjs';
+import type {SuiteData} from '../components/SeoSuitePanel';
 import {shopifyBoundaryError} from '../lib/shopify-boundary';
 import { useEffect } from 'react';
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from 'react-router';
-import { useFetcher, useLoaderData, useRouteError } from 'react-router';
+import { useFetcher, useLoaderData, useRouteError, useSearchParams } from 'react-router';
 import { boundary } from '@shopify/shopify-app-react-router/server';
 import { useAppBridge } from '@shopify/app-bridge-react';
 import { authenticate } from '../shopify.server';
@@ -23,7 +25,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const changes = await db.seoChange.findMany({ where: { shop: session.shop }, orderBy: { createdAt: 'desc' }, take: 50 });
   const data = dashboardData(JSON.parse(row.data), changes);
   let compressionConfigured=false;try{key();compressionConfigured=true;}catch{ /* Integration key has not been configured. */ }
-  return { ...data, google:await googleStatus(db,session.shop),compressions:await compressionList(db,session.shop),compressionConfigured,canManageGoogle:canManageGoogle(session),canWrite: session.scope?.split(',').includes('write_products') || false, canWriteFiles: session.scope?.split(',').includes('write_files') || false } as Dashboard;
+  return { ...data, suite:suiteData(JSON.parse(row.data)), google:await googleStatus(db,session.shop),compressions:await compressionList(db,session.shop),compressionConfigured,canManageGoogle:canManageGoogle(session),canWrite: session.scope?.split(',').includes('write_products') || false, canWriteFiles: session.scope?.split(',').includes('write_files') || false } as Dashboard & {suite:SuiteData};
 };
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -35,6 +37,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if((['google-connect','google-disconnect','google-settings'].includes(input.intent)||['suite-settings','suite-provider','suite-daily','suite-audit-settings','suite-audit'].includes(input.intent))&&!canManageGoogle(session))throw new Error("Google bağlantısını yönetmek için mağaza sahibi veya ayrıca yetkilendirilmiş bir kullanıcı olmalısınız.");
     if(input.intent==='google-connect')return {ok:true,connectURL:await prepareGoogle(db,session.shop)};
     if(input.intent==='refresh')return {ok:true};
+    if (input.intent === 'suite-export') {
+      const row=await ensureWorkspace(db,session.shop);
+      return {ok:true,download:reportCSV(suiteData(JSON.parse(row.data))),filename:'nowusa-seo-merkezi.csv'};
+    }
     if (input.intent === 'export') {
       const row = await ensureWorkspace(db, session.shop);
       return { ok: true, download: exportAudit(JSON.parse(row.data)), filename: 'nosweat-seo-audit.csv' } satisfies ActionResult;
@@ -49,6 +55,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 export default function Index() {
   const data = useLoaderData<typeof loader>();
+  const [params,setParams]=useSearchParams();
   const fetcher = useFetcher<ActionResult>();
   const bridge = useAppBridge();
   useEffect(() => {
@@ -59,7 +66,7 @@ export default function Index() {
       setTimeout(() => URL.revokeObjectURL(href), 1000);
     }
   }, [fetcher.data, bridge]);
-  return <SeoDashboard data={data} busy={fetcher.state !== 'idle'} result={fetcher.data} onAction={input => fetcher.submit(input, { method: 'POST', encType: 'application/json' })} />;
+  return <SeoDashboard suite={data.suite} suiteOpen={params.get('section')==='seo-suite'} onSuiteOpen={open=>setParams(previous=>{const next=new URLSearchParams(previous);if(open)next.set('section','seo-suite');else next.delete('section');return next;},{replace:true,preventScrollReset:true})} data={data} busy={fetcher.state !== 'idle'} result={fetcher.data} onAction={input => fetcher.submit(input, { method: 'POST', encType: 'application/json' })} />;
 }
 export function ErrorBoundary() { return shopifyBoundaryError(useRouteError()); }
 export const headers: HeadersFunction = args => {const headers=new Headers(boundary.headers(args));headers.set('Cache-Control','private, no-store');return headers;};
