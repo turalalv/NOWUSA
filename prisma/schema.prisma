@@ -116,10 +116,25 @@ model VisitorEvent {
   campaign String
   country String
   device String
+  clickType String @default("")
+  clickTarget String @default("")
   occurredAt DateTime
   receivedAt DateTime @default(now())
   @@index([shop, occurredAt])
   @@index([shop, visit, occurredAt])
+  @@index([receivedAt])
+}
+
+model VisitorBotEvent {
+  id String @id
+  shop String
+  source String
+  family String
+  path String
+  country String
+  occurredAt DateTime
+  receivedAt DateTime @default(now())
+  @@index([shop, occurredAt])
   @@index([receivedAt])
 }
 

@@ -17,6 +17,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     db.trafficOAuth.deleteMany({where:{shop}}),
     db.visitorTracker.deleteMany({where:{shop}}),
     db.visitorEvent.deleteMany({where:{shop}}),
+    db.visitorBotEvent.deleteMany({where:{shop}}),
     db.imageCompression.deleteMany({where:{shop}}),
     db.seoReportDelivery.deleteMany({where:{shop}}),
     db.seoWorkspace.deleteMany({ where: { shop } }),

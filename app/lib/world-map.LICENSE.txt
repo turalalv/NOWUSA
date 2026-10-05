@@ -1,0 +1,4 @@
+Natural Earth 1:110m countries, public domain. Coordinates rounded to two decimals. Supplementary country/territory representative points.
+https://www.naturalearthdata.com/about/terms-of-use/
+https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_admin_0_countries.geojson
+Points represent countries, never individual visitor locations.

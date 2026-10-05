@@ -1,11 +1,11 @@
 // Custom pixel: install once in Shopify Settings > Customer events.
 // Only Shopify's documented standard APIs are used; no storefront DOM access.
 export function visitorPixel({endpoint,publicKey}){
- return `// No Sweat SEO — visitor analytics v4. Analytics permission REQUIRED; data sale NOT applicable.
+ return `// No Sweat SEO — visitor analytics v5. Analytics permission REQUIRED; data sale NOT applicable.
  const endpoint = ${JSON.stringify(endpoint)}, key = ${JSON.stringify(publicKey)};
  const hosts = ['nosweatusa.com','www.nosweatusa.com','iyhxfe-mw.myshopify.com'];
  const storageKey = 'nosweat_visit_v1';
- let consent = init.customerPrivacy, memory = null, queue = Promise.resolve();
+ let consent = init.customerPrivacy, memory = null, queue = Promise.resolve(), latestContext = init.context, lastClick = 0;
  api.customerPrivacy.subscribe('visitorConsentCollected', event => {
   consent = event.customerPrivacy;
   if (!consent.analyticsProcessingAllowed) { memory = null; browser.sessionStorage.removeItem(storageKey).catch(() => {}); }
@@ -13,10 +13,12 @@ export function visitorPixel({endpoint,publicKey}){
  const safe = (value, max) => typeof value === 'string' && /^[\\p{L}\\p{N} ._+:/-]*$/u.test(value) && !value.includes('@') ? value.slice(0,max) : '';
  async function send(event) {
   if (!consent?.analyticsProcessingAllowed) return;
+  if (!event.context?.document) return;
   const doc = event.context.document, url = new URL(doc.location.href);
   if (!hosts.includes(url.hostname)) return;
   const path = url.pathname;
   if (!/^\\/(?:[a-z]{2}(?:-[a-z]{2})?\\/)?(?:$|products\\/[a-z0-9-]+\\/?$|collections(?:\\/[a-z0-9-]+(?:\\/products\\/[a-z0-9-]+)?)?\\/?$|pages\\/[a-z0-9-]+\\/?$|blogs\\/[a-z0-9-]+(?:\\/[a-z0-9-]+)?\\/?$)/i.test(path)) return;
+  if (event.click?.clickType === 'internal' && !/^\\/(?:[a-z]{2}(?:-[a-z]{2})?\\/)?(?:$|products\\/[a-z0-9-]+\\/?$|collections(?:\\/[a-z0-9-]+(?:\\/products\\/[a-z0-9-]+)?)?\\/?$|pages\\/[a-z0-9-]+\\/?$|blogs\\/[a-z0-9-]+(?:\\/[a-z0-9-]+)?\\/?$)/i.test(event.click.clickTarget)) return;
   const now = Date.now();
   let session = memory;
   if (!session) { try { session = JSON.parse(await browser.sessionStorage.getItem(storageKey)); } catch {} }
@@ -33,11 +35,28 @@ export function visitorPixel({endpoint,publicKey}){
   if (!consent?.analyticsProcessingAllowed) return;
   const ua = event.context.navigator.userAgent || '';
   const device = /iPad/i.test(ua)?'ios-tablet':/iPhone|iPod/i.test(ua)?'ios-mobile':/Android/i.test(ua)?(/Mobile/i.test(ua)?'android-mobile':'android-tablet'):/Tablet/i.test(ua)?'tablet':/Mobile/i.test(ua)?'mobile':'desktop';
-  const payload = {key, consent:true, host:url.hostname, id:event.id, visit:session.id, kind:event.name, at:event.timestamp, path, source:session.source, medium:session.medium, campaign:session.campaign, device};
+  const payload = {key, consent:true, host:url.hostname, id:event.id, visit:session.id, kind:event.name, at:event.timestamp, path, source:session.source, medium:session.medium, campaign:session.campaign, device, ...(event.click || {})};
   await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload),credentials:'omit',referrerPolicy:'no-referrer',keepalive:true});
  }
- function receive(event) { queue = queue.then(() => send(event)).catch(() => {}); }
+ function receive(event) { if (event.context) latestContext = event.context; queue = queue.then(() => send(event)).catch(() => {}); }
  analytics.subscribe('page_viewed', receive);
  analytics.subscribe('product_viewed', receive);
+ analytics.subscribe('clicked', event => {
+  if (!consent?.analyticsProcessingAllowed || !latestContext || Date.now()-lastClick < 500) return;
+  const element = event.data?.element;
+  if (!element) return;
+  let click;
+  if (element.href) {
+   try {
+    const target = new URL(element.href, latestContext.document.location.href);
+    if (!['https:','http:'].includes(target.protocol) || target.username || target.password) return;
+    click = hosts.includes(target.hostname) ? {clickType:'internal',clickTarget:target.pathname} : {clickType:'outbound',clickTarget:target.hostname};
+   } catch { return; }
+  } else if (String(element.tagName).toLowerCase() === 'button' || (String(element.tagName).toLowerCase() === 'input' && ['button','submit','reset'].includes(element.type))) {
+   click = {clickType:'button',clickTarget:''};
+  } else return;
+  lastClick = Date.now();
+  receive({...event, name:'clicked', context:latestContext, click});
+ });
 `;
 }
