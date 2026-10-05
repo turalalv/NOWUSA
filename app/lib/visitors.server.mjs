@@ -3,7 +3,7 @@ import {isIP} from 'node:net';
 import geoip from 'geoip-country';
 import {isbot} from 'isbot';
 import {key,appOrigin} from './secrets.server.mjs';
-import {STORE_HOSTS,visitorPath,attribution,summarizeVisitors} from './visitors.mjs';
+import {STORE_HOSTS,VISITOR_DEVICES,visitorPath,attribution,summarizeVisitors} from './visitors.mjs';
 import {visitorPixel} from './visitors-pixel.mjs';
 
 const hmac=value=>crypto.createHmac('sha256',key()).update(value).digest('hex');
@@ -57,7 +57,7 @@ export async function collectVisitor(request,db,{now=new Date(),country=clientCo
  if(isbot(request.headers.get('user-agent')||''))return response(204);
  if(!rate(request))return response(429);
  let body;try{body=await smallBody(request);}catch{return response(400);}
- if(!body||typeof body!=='object'||body.consent!==true||!STORE_HOSTS.includes(body.host)||!['page_viewed','product_viewed'].includes(body.kind)||!/^[-a-zA-Z0-9_]{8,160}$/.test(body.id||'')||!/^[a-f0-9-]{32,36}$/.test(body.visit||'')||!/^[a-f0-9]{48}$/.test(body.key||'')||!visitorPath(body.path)||!['desktop','mobile','tablet'].includes(body.device))return response(400);
+ if(!body||typeof body!=='object'||body.consent!==true||!STORE_HOSTS.includes(body.host)||!['page_viewed','product_viewed'].includes(body.kind)||!/^[-a-zA-Z0-9_]{8,160}$/.test(body.id||'')||!/^[a-f0-9-]{32,36}$/.test(body.visit||'')||!/^[a-f0-9]{48}$/.test(body.key||'')||!visitorPath(body.path)||!Object.hasOwn(VISITOR_DEVICES,body.device))return response(400);
  if(body.kind==='product_viewed'&&!body.path.includes('/products/'))return response(400);
  const occurredAt=new Date(body.at);if(!Number.isFinite(+occurredAt)||occurredAt>new Date(+now+60000)||occurredAt<new Date(now-86400000))return response(400);
  const config=await db.visitorTracker.findUnique({where:{publicKey:body.key}});

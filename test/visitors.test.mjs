@@ -22,11 +22,11 @@ test('allowlists public pages and never retains account/query/referrer parameter
 });
 test('collector deduplicates, stores pseudonyms, ignores disabled/foreign/bot and caps input',async t=>{
  const db=await testDatabase(t);await configureVisitors(db,shop,{intent:'visitors-enable'});const config=await db.visitorTracker.findUnique({where:{shop}}),body={...event,key:config.publicKey};
- const opts={now,country:()=> 'AZ',rate:()=>true};
+ body.device='android-mobile';const opts={now,country:()=> 'AZ',rate:()=>true};
  assert.equal((await collectVisitor(request(body),db,opts)).status,204);
  assert.equal((await collectVisitor(request(body),db,opts)).status,204);
  assert.equal(await db.visitorEvent.count(),1);
- const stored=await db.visitorEvent.findFirst();assert.notEqual(stored.visit,event.visit);assert.notEqual(stored.id,event.id);assert.equal(stored.country,'AZ');assert.equal(stored.source,'instagram');assert.equal('ip' in stored,false);
+ const stored=await db.visitorEvent.findFirst();assert.notEqual(stored.visit,event.visit);assert.notEqual(stored.id,event.id);assert.equal(stored.country,'AZ');assert.equal(stored.device,'android-mobile');assert.equal(stored.source,'instagram');assert.equal('ip' in stored,false);
  for(const patch of [{consent:false},{host:'evil.com'},{path:'/account'},{kind:'checkout_completed'},{at:'2025-01-01'},{device:'unknown'}])assert.equal((await collectVisitor(request({...body,...patch}),db,opts)).status,400);
  assert.equal((await collectVisitor(request(body,{origin:'https://evil.com'}),db,opts)).status,403);
  assert.equal((await collectVisitor(request({...body,campaign:'x'.repeat(5000)}),db,opts)).status,400);
@@ -56,7 +56,7 @@ test('actual generated pixel gates consent, preserves first source and emits san
  const standard={id:event.id,name:'page_viewed',timestamp:new Date().toISOString(),context:{document:{location:{href:'https://www.nosweatusa.com/products/spray?utm_source=instagram&utm_medium=paid_social&email=private@example.com'},referrer:'https://instagram.com/p/private'},navigator:{userAgent:'iPhone Mobile'}}};
  const flush=()=>new Promise(r=>setTimeout(r,15));
  listeners.page_viewed(standard);await flush();assert.equal(sent.length,0);assert.equal(storage.size,0);
- privacy({customerPrivacy:{analyticsProcessingAllowed:true}});listeners.page_viewed(standard);await flush();assert.equal(sent.length,1);assert.equal(sent[0].payload.path,'/products/spray');assert.equal(sent[0].payload.source,'instagram');assert(!JSON.stringify(sent).includes('private'));
+ privacy({customerPrivacy:{analyticsProcessingAllowed:true}});listeners.page_viewed(standard);await flush();assert.equal(sent.length,1);assert.equal(sent[0].payload.path,'/products/spray');assert.equal(sent[0].payload.source,'instagram');assert.equal(sent[0].payload.device,'ios-mobile');assert(!JSON.stringify(sent).includes('private'));
  listeners.product_viewed({...standard,name:'product_viewed',id:'product_event_123',context:{...standard.context,document:{location:{href:'https://www.nosweatusa.com/products/second'},referrer:'https://www.nosweatusa.com/products/spray'}}});await flush();assert.equal(sent[1].payload.visit,sent[0].payload.visit);assert.equal(sent[1].payload.source,'instagram');
  privacy({customerPrivacy:{analyticsProcessingAllowed:false}});listeners.page_viewed(standard);await flush();assert.equal(sent.length,2);assert.equal(storage.size,0);
  privacy({customerPrivacy:{analyticsProcessingAllowed:true}});listeners.page_viewed({...standard,context:{...standard.context,document:{location:{href:'https://www.nosweatusa.com/account/orders/secret'}}}});await flush();assert.equal(sent.length,2);

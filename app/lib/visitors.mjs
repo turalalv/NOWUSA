@@ -3,6 +3,7 @@ export {countryFlag} from './traffic.mjs';
 
 export const VISITOR_PERIODS={today:'Bugün',yesterday:'Dün',week:'Son 7 gün (bugün dahil)'};
 export const STORE_HOSTS=['nosweatusa.com','www.nosweatusa.com','iyhxfe-mw.myshopify.com'];
+export const VISITOR_DEVICES={desktop:'Masaüstü',mobile:'Mobil',tablet:'Tablet','ios-mobile':'iOS · Mobil','ios-tablet':'iOS · Tablet','android-mobile':'Android · Mobil','android-tablet':'Android · Tablet'};
 export function visitorPath(value){
  if(typeof value!=='string'||value.length>512||/[?#@\\\s]/.test(value))return null;
  // Only public catalog/editorial routes. Never retain account, checkout, search or order URLs.

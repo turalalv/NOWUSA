@@ -1,7 +1,7 @@
 // Custom pixel: install once in Shopify Settings > Customer events.
 // Only Shopify's documented standard APIs are used; no storefront DOM access.
 export function visitorPixel({endpoint,publicKey}){
- return `// No Sweat SEO — visitor analytics v1. Analytics permission REQUIRED; data sale NOT applicable.
+ return `// No Sweat SEO — visitor analytics v2. Analytics permission REQUIRED; data sale NOT applicable.
 (() => {
  const endpoint = ${JSON.stringify(endpoint)}, key = ${JSON.stringify(publicKey)};
  const hosts = ['nosweatusa.com','www.nosweatusa.com','iyhxfe-mw.myshopify.com'];
@@ -33,7 +33,8 @@ export function visitorPixel({endpoint,publicKey}){
   try { await browser.sessionStorage.setItem(storageKey,JSON.stringify(session)); } catch {}
   if (!consent?.analyticsProcessingAllowed) return;
   const ua = event.context.navigator.userAgent || '';
-  const payload = {key, consent:true, host:url.hostname, id:event.id, visit:session.id, kind:event.name, at:event.timestamp, path, source:session.source, medium:session.medium, campaign:session.campaign, device:/iPad|Tablet/i.test(ua)?'tablet':/Mobile|Android|iPhone/i.test(ua)?'mobile':'desktop'};
+  const device = /iPad/i.test(ua)?'ios-tablet':/iPhone|iPod/i.test(ua)?'ios-mobile':/Android/i.test(ua)?(/Mobile/i.test(ua)?'android-mobile':'android-tablet'):/Tablet/i.test(ua)?'tablet':/Mobile/i.test(ua)?'mobile':'desktop';
+  const payload = {key, consent:true, host:url.hostname, id:event.id, visit:session.id, kind:event.name, at:event.timestamp, path, source:session.source, medium:session.medium, campaign:session.campaign, device};
   await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload),credentials:'omit',referrerPolicy:'no-referrer',keepalive:true});
  }
  ['page_viewed','product_viewed'].forEach(name => analytics.subscribe(name,event => { queue = queue.then(() => send(event)).catch(() => {}); }));
