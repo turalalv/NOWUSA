@@ -8,6 +8,7 @@ Private, single-merchant app for **No Sweat USA**, rendered inside Shopify Admin
 
 ## Included
 
+- Calendar-week SEO reports with Google comparisons, observed edit outcomes, optional Shopify SEO landing-page sales attribution, PDF downloads, and optional weekly email. Setup, attribution definitions and limits: [WEEKLY-REPORTS.md](WEEKLY-REPORTS.md).
 - Product and collection SEO audit: missing/duplicate text, editorial length hints, image alt text, keyword mapping, internal-link suggestions, CSV export.
 - Individual and bulk SEO drafts, Google snippet preview, exact-draft confirmation, live source recheck, persisted before/after history and reviewed rollback drafts.
 - Up to 100 bulk draft suggestions per request, derived from existing product copy; up to 25 confirmed SEO writes. A failed write stops the remaining batch; earlier successful writes remain applied.

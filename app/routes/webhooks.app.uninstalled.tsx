@@ -14,6 +14,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     db.googleConnection.deleteMany({where:{shop}}),
     db.googleOAuth.deleteMany({where:{shop}}),
     db.imageCompression.deleteMany({where:{shop}}),
+    db.seoReportDelivery.deleteMany({where:{shop}}),
     db.seoWorkspace.deleteMany({ where: { shop } }),
     db.seoChange.deleteMany({ where: { shop } }),
   ]);

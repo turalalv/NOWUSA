@@ -26,7 +26,7 @@ services:
       - key: ALLOWED_SHOP
         value: iyhxfe-mw.myshopify.com
       - key: SCOPES
-        value: read_products,write_products,read_files,write_files
+        value: read_products,write_products,read_files,write_files,read_orders
       - key: INTEGRATION_ENCRYPTION_KEY
         generateValue: true
       - key: CRON_SECRET

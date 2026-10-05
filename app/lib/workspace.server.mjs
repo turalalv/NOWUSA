@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import {weeklyWindow, reportSettings, saveReportSettings} from './weekly-reports.mjs';
+import {generateWeeklyReport, sendWeeklyEmail, emailConfigured} from './weekly-reports.server.mjs';
 import {suiteOperation} from './seo-suite.server.mjs';
 import {importCompetitor} from './competitors.mjs';
 import {importBacklinkCSV} from './backlink-import.mjs';
@@ -76,7 +78,7 @@ export async function applyDraft({state,input,api,db,shop}) {
     page.seo=updated.seo;page.updatedAt=updated.updatedAt;delete state.drafts[page.id];snapshot(state);
   }catch(error){await db.seoChange.update({where:{id:change.id},data:{status:'unconfirmed'}});throw new Error(`${error.message} Sonucu doğrulamak için kataloğu güncelleyin. Önceki metin geçmişte saklandı.`);}
 }
-export async function performOperation({db,shop,admin,input}) {
+export async function performOperation({db,shop,admin,input,canReadOrders=false}) {
   await ensureWorkspace(db,shop);
   const lockToken=crypto.randomUUID();
   const acquired=await db.seoWorkspace.updateMany({where:{shop,OR:[{lockUntil:null},{lockUntil:{lt:new Date()}}]},data:{lockToken,lockUntil:new Date(Date.now()+10*60*1000)}});
@@ -86,6 +88,30 @@ export async function performOperation({db,shop,admin,input}) {
     let message;
     if(input.intent.startsWith('suite-'))message=await suiteOperation(state,input);
     else switch(input.intent){
+      case 'weekly-settings':
+        if(input.email==='true'&&!emailConfigured())throw new Error('E-posta sağlayıcısını sunucuda yapılandırın; PDF raporu şimdi kullanılabilir.');
+        saveReportSettings(state,input);message='Haftalık rapor ayarları kaydedildi.';break;
+      case 'weekly-generate':
+      case 'weekly-auto':{
+        const settings=reportSettings(state),window=weeklyWindow();
+        const existing=state.weekly?.reports?.find(r=>r.end===window.end);
+        if(input.intent==='weekly-auto'&&!settings.auto){message='Haftalık otomasyon kapalı.';break;}
+        if(input.intent==='weekly-auto'&&existing){message='Bu haftanın raporu hazır.';break;}
+        const report=await generateWeeklyReport({db,shop,state,admin,canReadOrders});
+        message=`${report.start} — ${report.end} haftalık raporu hazırlandı.${report.sales.status==='unavailable'?' Satış verisi alınamadı; raporda açıklanır.':''}`;break;
+      }
+      case 'weekly-email':{
+        if(input.confirm!=='SEND')throw new Error('Rapor gönderimini onaylayın.');
+        const report=state.weekly?.reports?.find(r=>r.id===input.reportId);
+        if(!report)throw new Error('Haftalık rapor bulunamadı.');
+        message=await sendWeeklyEmail({db,shop,report,recipient:reportSettings(state).recipient});break;
+      }
+      case 'weekly-email-auto':{
+        const settings=reportSettings(state);
+        const report=state.weekly?.reports?.find(r=>r.end===weeklyWindow().end);
+        if(!settings.auto||!settings.email||!report){message='Otomatik e-posta için hazır rapor yok veya gönderim kapalı.';break;}
+        message=await sendWeeklyEmail({db,shop,report,recipient:settings.recipient});break;
+      }
       case 'competitor-import':importCompetitor(state,input.json);message="Rakip SEO raporu kaydedildi.";break;
       case 'backlink-csv-import':importBacklinkCSV(state,input);message="Backlink CSV raporu kaydedildi.";break;
       case 'growth-check':setReadiness(state,input);message="Ürün kontrolü kaydedildi.";break;

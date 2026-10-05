@@ -90,3 +90,15 @@ model ImageCompression {
   createdAt DateTime @default(now())
   @@index([shop, createdAt])
 }
+
+model SeoReportDelivery {
+  id         String   @id
+  shop       String
+  reportId   String
+  status     String
+  providerId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([shop, createdAt])
+}

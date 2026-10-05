@@ -15,6 +15,8 @@ import {key} from '../lib/secrets.server.mjs';
 import { assertAllowedShop, ensureWorkspace, dashboardData, performOperation, exportAudit } from '../lib/workspace.server.mjs';
 import SeoDashboard from '../components/SeoDashboard';
 import type { ActionInput, ActionResult, Dashboard } from '../lib/types';
+import {weeklyData} from '../lib/weekly-reports.mjs';
+import {emailConfigured} from '../lib/weekly-reports.server.mjs';
 
 export const config = { maxDuration: 600 };
 
@@ -24,6 +26,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const row = await ensureWorkspace(db, session.shop);
   const changes = await db.seoChange.findMany({ where: { shop: session.shop }, orderBy: { createdAt: 'desc' }, take: 50 });
   const data = dashboardData(JSON.parse(row.data), changes);
+  if(canManageGoogle(session))Object.assign(data,{weekly:{...weeklyData(JSON.parse(row.data)),emailConfigured:emailConfigured(),canReadOrders:Boolean(session.scope?.split(',').includes('read_orders')),deliveries:await db.seoReportDelivery.findMany({where:{shop:session.shop},select:{reportId:true,status:true,updatedAt:true},orderBy:{updatedAt:'desc'},take:52})}});
   let compressionConfigured=false;try{key();compressionConfigured=true;}catch{ /* Integration key has not been configured. */ }
   return { ...data, suite:suiteData(JSON.parse(row.data)), google:await googleStatus(db,session.shop),compressions:await compressionList(db,session.shop),compressionConfigured,canManageGoogle:canManageGoogle(session),canWrite: session.scope?.split(',').includes('write_products') || false, canWriteFiles: session.scope?.split(',').includes('write_files') || false } as Dashboard & {suite:SuiteData};
 };
@@ -34,6 +37,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const text = await request.text();
     if (text.length > 3_000_000) throw new Error("İstek boyutu 3 MB sınırını aşıyor.");
     const input = JSON.parse(text) as ActionInput;
+    if(input.intent.startsWith('weekly-')){
+      if(!canManageGoogle(session))throw new Error('Haftalık raporlar için mağaza sahibi veya yetkilendirilmiş yönetici olmalısınız.');
+      if(!['weekly-settings','weekly-generate','weekly-email','weekly-pdf'].includes(input.intent))throw new Error('Geçersiz rapor işlemi.');
+      if(input.intent==='weekly-pdf'){
+        const row=await ensureWorkspace(db,session.shop);
+        const report=JSON.parse(row.data).weekly?.reports?.find((r:{id:string})=>r.id===input.reportId);
+        if(!report)throw new Error('Haftalık rapor bulunamadı.');
+        const {reportPDF}=await import('../lib/weekly-report-export.server.mjs');
+        const pdf=await reportPDF(report) as Buffer;
+        return {ok:true,download:pdf.toString('base64'),encoding:'base64',mime:'application/pdf',filename:`no-sweat-seo-${report.end}.pdf`} satisfies ActionResult;
+      }
+    }
     if((['google-connect','google-disconnect','google-settings'].includes(input.intent)||['suite-settings','suite-provider','suite-daily','suite-audit-settings','suite-audit'].includes(input.intent))&&!canManageGoogle(session))throw new Error("Google bağlantısını yönetmek için mağaza sahibi veya ayrıca yetkilendirilmiş bir kullanıcı olmalısınız.");
     if(input.intent==='google-connect')return {ok:true,connectURL:await prepareGoogle(db,session.shop)};
     if(input.intent==='refresh')return {ok:true};
@@ -47,7 +62,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
     if (['apply','bulk-apply'].includes(input.intent) && !session.scope?.split(',').includes('write_products')) throw new Error("Canlı değişiklik için write_products izni gerekir.");
     if (['image-apply','compression-apply'].includes(input.intent) && !session.scope?.split(',').includes('write_files')) throw new Error("Görsel değişikliği için write_files izni gerekir.");
-    return await performOperation({ db, shop: session.shop, admin, input }) as ActionResult;
+    return await performOperation({ db, shop: session.shop, admin, input, canReadOrders:Boolean(session.scope?.split(',').includes('read_orders')) }) as ActionResult;
   } catch (error) {
     if (error instanceof Response) throw error;
     return Response.json({ error: error instanceof Error ? error.message : "İşlem başarısız oldu." }, { status: 400 });
@@ -61,7 +76,8 @@ export default function Index() {
   useEffect(() => {
     if (fetcher.data?.message) bridge.toast.show(fetcher.data.message);
     if (fetcher.data?.download) {
-      const href = URL.createObjectURL(new Blob([fetcher.data.download], { type: 'text/csv;charset=utf-8' }));
+      const content=fetcher.data.encoding==='base64'?Uint8Array.from(atob(fetcher.data.download),c=>c.charCodeAt(0)):fetcher.data.download;
+      const href = URL.createObjectURL(new Blob([content], { type: fetcher.data.mime||'text/csv;charset=utf-8' }));
       const link = document.createElement('a'); link.href = href; link.download = fetcher.data.filename || 'audit.csv'; link.click();
       setTimeout(() => URL.revokeObjectURL(href), 1000);
     }
