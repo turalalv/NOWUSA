@@ -102,6 +102,31 @@ model TrafficOAuth {
   @@index([shop])
 }
 
+model VisitorTracker {
+  shop String @id
+  publicKey String @unique
+  enabled Boolean @default(true)
+  createdAt DateTime @default(now())
+}
+
+model VisitorEvent {
+  id String @id
+  shop String
+  visit String
+  kind String
+  path String
+  source String
+  medium String
+  campaign String
+  country String
+  device String
+  occurredAt DateTime
+  receivedAt DateTime @default(now())
+  @@index([shop, occurredAt])
+  @@index([shop, visit, occurredAt])
+  @@index([receivedAt])
+}
+
 model ImageCompression {
   id String @id @default(cuid())
   shop String

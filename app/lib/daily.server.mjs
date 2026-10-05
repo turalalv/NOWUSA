@@ -1,5 +1,6 @@
 import { equal } from './secrets.server.mjs';
 import { performOperation, assertAllowedShop } from './workspace.server.mjs';
+import {cleanupVisitors} from './visitors.server.mjs';
 
 /** @param {((shop:string) => Promise<any>) | null} getAdmin */
 export async function runDaily(request, db, run = performOperation, getAdmin = null) {
@@ -11,6 +12,7 @@ export async function runDaily(request, db, run = performOperation, getAdmin = n
   const task = new URL(request.url).searchParams.get('task');
   if (task && !['google', 'backlinks', 'suite', 'weekly', 'traffic'].includes(task)) return new Response('Unknown task', { status: 400, headers });
   assertAllowedShop(shop);
+  if(db.visitorEvent)await cleanupVisitors(db);
   const row = await db.seoWorkspace.findUnique({ where: { shop } });
   if (!row) return Response.json({ skipped: true }, { headers });
   const state = JSON.parse(row.data);

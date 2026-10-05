@@ -2,6 +2,7 @@ import {useState} from 'react';
 import type {ActionInput,ActionResult} from '../lib/types';
 import {TRAFFIC_PERIODS,countryFlag} from '../lib/traffic.mjs';
 import './traffic.css';
+import LiveVisitors from './LiveVisitors';
 
 type Metrics={sessions:number;totalUsers:number;screenPageViews:number};
 type Source={sessionSource:string;sessionMedium:string;sessionCampaignName:string;sessionDefaultChannelGroup:string;country:string;countryId:string;label:string;sessions:number;totalUsers:number};
@@ -19,6 +20,8 @@ export default function TrafficAnalytics({data,busy,result,onAction}:Props){
  const productRows=report?.products.filter(filtered)||[],sourceRows=report?.sources.filter(filtered)||[];
  const countryRows=report?.countries.filter(r=>!country||country===r.countryId)||[];
  return <div className="traffic-panel">
+  <LiveVisitors busy={busy} onAction={onAction}/>
+  <h2 className="traffic-history-heading">Geçmiş trafik · Google Analytics</h2>
   <section className="analytics-card traffic-intro"><div><h2>Ziyaretçiler nereden geliyor?</h2><p>Direct, arama, Instagram, TikTok, reklamlar ve diğer siteler. Ülkeler ve görüntülenen ürünler aynı raporda.</p></div><span className="traffic-chip">Google Analytics 4</span></section>
   <details className="studio-details" open={!connection.connected}><summary>Analytics bağlantısı ve otomatik güncelleme</summary><div className="traffic-settings">
    <p>{connection.connected?`${connection.name} · ${connection.property} · ${connection.measurementId}`:'Önce nosweatusa.com sitesinin GA4 hesabını bağlayın. Search Console bağlantısı ziyaretçi verisi içermez.'}</p>

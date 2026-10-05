@@ -19,6 +19,7 @@ import {weeklyData} from '../lib/weekly-reports.mjs';
 import {emailConfigured} from '../lib/weekly-reports.server.mjs';
 import {trafficData} from '../lib/traffic.mjs';
 import {trafficStatus,prepareTraffic} from '../lib/traffic.server.mjs';
+import {configureVisitors} from '../lib/visitors.server.mjs';
 
 export const config = { maxDuration: 600 };
 
@@ -44,6 +45,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const text = await request.text();
     if (text.length > 3_000_000) throw new Error("İstek boyutu 3 MB sınırını aşıyor.");
     const input = JSON.parse(text) as ActionInput;
+    if(input.intent.startsWith('visitors-')){
+      if(!canManageGoogle(session))throw new Error('Ziyaret takibini yalnızca yetkilendirilmiş yönetici değiştirebilir.');
+      return await configureVisitors(db,session.shop,input);
+    }
     if(input.intent.startsWith('traffic-')){
       if(!canManageGoogle(session))throw new Error('Ziyaretçi raporları için yetkilendirilmiş yönetici olmalısınız.');
       if(!['traffic-connect','traffic-service','traffic-property','traffic-settings','traffic-sync','traffic-disconnect','traffic-pdf'].includes(input.intent))throw new Error('Geçersiz ziyaretçi işlemi.');
