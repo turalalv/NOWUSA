@@ -1,8 +1,7 @@
 // Custom pixel: install once in Shopify Settings > Customer events.
 // Only Shopify's documented standard APIs are used; no storefront DOM access.
 export function visitorPixel({endpoint,publicKey}){
- return `// No Sweat SEO — visitor analytics v3. Analytics permission REQUIRED; data sale NOT applicable.
-(() => {
+ return `// No Sweat SEO — visitor analytics v4. Analytics permission REQUIRED; data sale NOT applicable.
  const endpoint = ${JSON.stringify(endpoint)}, key = ${JSON.stringify(publicKey)};
  const hosts = ['nosweatusa.com','www.nosweatusa.com','iyhxfe-mw.myshopify.com'];
  const storageKey = 'nosweat_visit_v1';
@@ -40,6 +39,5 @@ export function visitorPixel({endpoint,publicKey}){
  function receive(event) { queue = queue.then(() => send(event)).catch(() => {}); }
  analytics.subscribe('page_viewed', receive);
  analytics.subscribe('product_viewed', receive);
-})();
 `;
 }
