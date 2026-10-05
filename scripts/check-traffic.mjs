@@ -22,11 +22,11 @@ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;
 try{
  browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1380,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>customElements.get('s-button'));
- await page.getByRole('button',{name:'Ziyaretçi analitiği',exact:true}).click();await page.getByRole('heading',{name:'Ziyaretçiler nereden geliyor?'}).waitFor();
+ await page.getByRole('button',{name:'Ziyaretçi analitiği',exact:true}).click();await page.getByRole('heading',{name:'Geçmiş trafik'}).waitFor();
  await page.getByText('Ziyaret #abc123',{exact:true}).waitFor();
- await page.locator('.visitor-globe canvas').waitFor();assert(await page.locator('.visitor-globe canvas').evaluate(c=>c.width>100));await page.getByRole('button',{name:'Döndürmeyi durdur',exact:true}).click();await page.getByRole('button',{name:'Döndürmeyi aç',exact:true}).waitFor();
+ await page.locator('.visitor-globe canvas').waitFor();assert(await page.locator('.visitor-globe canvas').evaluate(c=>c.width>100));assert.equal(await page.getByRole('button',{name:/Döndür|Duraklat/}).count(),0);
  await page.locator('.live-feed summary').first().click();await page.getByText('Ürün: Canlı örnek ürün',{exact:true}).waitFor();
- await page.getByText('Dış bağlantı: instagram.com',{exact:true}).waitFor();await page.getByText('Sunucu günlükleri otomatik bağlı değil.',{exact:true}).waitFor();
+ await page.getByText('Dış bağlantı: instagram.com',{exact:true}).waitFor();await page.getByText('Sunucu bağlantısı yok',{exact:true}).waitFor();
  await page.locator('.live-visitors .traffic-countries button').filter({hasText:'Azerbaycan'}).click();assert.equal(await page.getByText('Ziyaret #def123',{exact:true}).count(),0);
  await page.getByRole('button',{name:'Filtreleri temizle',exact:true}).click();assert.equal(await page.getByText('Ziyaret #def123',{exact:true}).count(),1);
  await page.getByText('Ziyaret takibi kurulumu',{exact:true}).click();await page.getByRole('button',{name:'Piksel kodunu indir',exact:true}).click();assert.equal((await page.evaluate(()=>window.actions)).at(-1).intent,'visitors-code');
@@ -35,6 +35,6 @@ try{
  await page.getByRole('button',{name:'PDF indir',exact:true}).click();assert.deepEqual((await page.evaluate(()=>window.actions)).at(-1),{intent:'traffic-pdf',period:'week'});
  await page.getByRole('combobox',{name:'Dönem',exact:true}).selectOption('today');await page.getByText('Bu dönem için rapor hazırlayın',{exact:true}).waitFor();await page.getByRole('button',{name:'Verileri getir / yenile',exact:true}).click();assert.equal((await page.evaluate(()=>window.actions)).at(-1).period,'today');
  await page.getByRole('combobox',{name:'Dönem',exact:true}).selectOption('week');
- await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/traffic-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/traffic-mobile.png',fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'Mobile overflow');assert.deepEqual(errors,[]);
+ await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/traffic-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.locator('.visitor-globe canvas').scrollIntoViewIfNeeded();await page.waitForTimeout(300);await page.locator('.visitor-globe').screenshot({path:'artifacts/visitor-globe-mobile.png'});await page.screenshot({path:'artifacts/traffic-mobile.png',fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'Mobile overflow');assert.deepEqual(errors,[]);
  console.log('Traffic UI passed: live feed expansion/country filtering/pixel download, GA4 source/country filters, period selection, PDF, empty states, desktop/mobile, no page errors.');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});}

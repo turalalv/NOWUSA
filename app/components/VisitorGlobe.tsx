@@ -8,8 +8,8 @@ const centers=world.centers as unknown as Record<string,[number,number]>;
 const names=new Intl.DisplayNames(['tr'],{type:'region'});
 export default function VisitorGlobe({countries,selected,onSelect}:{countries:Country[];selected:string;onSelect:(code:string)=>void}){
  const canvas=useRef<HTMLCanvasElement>(null),rotation=useRef<[number,number]>([-25,-18]);
- const [paused,setPaused]=useState(false),[reduced,setReduced]=useState(false),[hover,setHover]=useState('');
- const current=useRef({countries,selected,onSelect,paused,reduced});current.current={countries,selected,onSelect,paused,reduced};
+ const [reduced,setReduced]=useState(false),[hover,setHover]=useState('');
+ const current=useRef({countries,selected,onSelect,reduced});current.current={countries,selected,onSelect,reduced};
  useEffect(()=>{const query=matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setReduced(query.matches);update();query.addEventListener('change',update);return()=>query.removeEventListener('change',update);},[]);
  useEffect(()=>{if(selected&&centers[selected])rotation.current=[-centers[selected][0],-centers[selected][1]];},[selected]);
  useEffect(()=>{
@@ -23,7 +23,7 @@ export default function VisitorGlobe({countries,selected,onSelect}:{countries:Co
   const draw=(time:number)=>{
    frame=requestAnimationFrame(draw);const elapsed=Math.min(time-last,100);if(time-last<32)return;last=time;
    if(!visible||document.hidden||!width)return;
-   const state=current.current,animate=!state.paused&&!state.reduced&&!over&&!drag&&!state.selected;
+   const state=current.current,animate=!state.reduced&&!over&&!drag&&!state.selected;
    if(animate)rotation.current[0]=(rotation.current[0]+elapsed*.003)%360;
    const radius=Math.min(width*.43,height*.43);projection.translate([width/2,height/2]).scale(radius).rotate([...rotation.current,0]);
    ctx.clearRect(0,0,width,height);
@@ -36,7 +36,7 @@ export default function VisitorGlobe({countries,selected,onSelect}:{countries:Co
     const point=centers[country.code];if(!point||geoDistance(point,[-rotation.current[0],-rotation.current[1]])>Math.PI/2)continue;
     const position=projection(point);if(!position)continue;const [x,y]=position;dots.push({x,y,code:country.code});
     const active=Boolean(country.active),r=Math.min(10,4+Math.sqrt(country.visits));
-    if(active){const pulse=state.reduced||state.paused?0.4:(time%2200)/2200;ctx.beginPath();ctx.arc(x,y,r+3+pulse*12,0,Math.PI*2);ctx.strokeStyle=`rgba(110,231,183,${.6*(1-pulse)})`;ctx.lineWidth=1.5;ctx.stroke();}
+    if(active){const pulse=state.reduced?0.4:(time%2200)/2200;ctx.beginPath();ctx.arc(x,y,r+3+pulse*12,0,Math.PI*2);ctx.strokeStyle=`rgba(110,231,183,${.6*(1-pulse)})`;ctx.lineWidth=1.5;ctx.stroke();}
     ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=state.selected===country.code?'#fff':active?'#6ee7b7':'#7dd3fc';ctx.fill();ctx.strokeStyle='#082438';ctx.lineWidth=2;ctx.stroke();
    }
   };
@@ -52,8 +52,8 @@ export default function VisitorGlobe({countries,selected,onSelect}:{countries:Co
  },[]);
  const focused=countries.find(c=>c.code===(hover||selected)),unmapped=countries.filter(c=>!centers[c.code]).reduce((sum,c)=>sum+c.visits,0);
  return <section className="visitor-globe analytics-card">
-  <div className="globe-heading"><div><span className="globe-eyebrow">DÜNYADAN ZİYARETLER</span><h3>Mağazanızın dünyası</h3><p>Seçili dönemin ülkeleri · Yeşil: son 5 dakikada etkinlik</p></div><button type="button" onClick={()=>setPaused(!paused)} aria-pressed={paused}>{paused?'Döndürmeyi aç':'Döndürmeyi durdur'}</button></div>
+  <div className="globe-heading"><div><span className="globe-eyebrow">ZİYARET HARİTASI</span><h3>Dünya genelinde</h3><p>Yeşil noktalar · Son 5 dakika</p></div></div>
   <div className="globe-stage"><canvas ref={canvas} role="img" aria-label="Ülkelere göre ziyaretleri gösteren dönen dünya küresi. Aynı ülkeler aşağıdaki düğmelerden seçilebilir."/><div className="globe-caption" aria-live="polite">{focused?<><strong>{names.of(focused.code)||focused.code}</strong><span>{focused.visits} ziyaret · {focused.active||0} son 5 dakika</span></>:<><strong>{countries.filter(c=>c.code!=='ZZ').length} ülke</strong><span>{reduced?'Hareket azaltma tercihi etkin':selected?'Seçili ülke sabitlendi':'Sürükleyerek dünyayı çevirin'}</span></>}</div></div>
-  <div className="globe-footer"><span>Noktalar ülke merkezleridir; ziyaretçinin tam konumu değildir.</span>{unmapped>0&&<span>{unmapped} ziyaret haritada konumlandırılamadı; ülke listesinde bulunur.</span>}<small>Harita: Natural Earth · Public domain</small></div>
+  <div className="globe-footer"><span>Yaklaşık ülke konumu</span>{unmapped>0&&<span>{unmapped} ziyaret haritada konumlandırılamadı; ülke listesinde bulunur.</span>}<small>Natural Earth</small></div>
  </section>;
 }
