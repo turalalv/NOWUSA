@@ -17,6 +17,8 @@ import SeoDashboard from '../components/SeoDashboard';
 import type { ActionInput, ActionResult, Dashboard } from '../lib/types';
 import {weeklyData} from '../lib/weekly-reports.mjs';
 import {emailConfigured} from '../lib/weekly-reports.server.mjs';
+import {trafficData} from '../lib/traffic.mjs';
+import {trafficStatus,prepareTraffic} from '../lib/traffic.server.mjs';
 
 export const config = { maxDuration: 600 };
 
@@ -26,6 +28,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const row = await ensureWorkspace(db, session.shop);
   const changes = await db.seoChange.findMany({ where: { shop: session.shop }, orderBy: { createdAt: 'desc' }, take: 50 });
   const data = dashboardData(JSON.parse(row.data), changes);
+  if(canManageGoogle(session)){
+    const connection=await trafficStatus(db,session.shop),traffic=trafficData(JSON.parse(row.data));
+    traffic.reports=Object.fromEntries(Object.entries(traffic.reports).filter(([,report]:[string,any])=>report.property===connection.property));
+    Object.assign(data,{traffic:{...traffic,connection}});
+  }
   if(canManageGoogle(session))Object.assign(data,{weekly:{...weeklyData(JSON.parse(row.data)),emailConfigured:emailConfigured(),canReadOrders:Boolean(session.scope?.split(',').includes('read_orders')),deliveries:await db.seoReportDelivery.findMany({where:{shop:session.shop},select:{reportId:true,status:true,updatedAt:true},orderBy:{updatedAt:'desc'},take:52})}});
   let compressionConfigured=false;try{key();compressionConfigured=true;}catch{ /* Integration key has not been configured. */ }
   return { ...data, suite:suiteData(JSON.parse(row.data)), google:await googleStatus(db,session.shop),compressions:await compressionList(db,session.shop),compressionConfigured,canManageGoogle:canManageGoogle(session),canWrite: session.scope?.split(',').includes('write_products') || false, canWriteFiles: session.scope?.split(',').includes('write_files') || false } as Dashboard & {suite:SuiteData};
@@ -37,6 +44,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const text = await request.text();
     if (text.length > 3_000_000) throw new Error("İstek boyutu 3 MB sınırını aşıyor.");
     const input = JSON.parse(text) as ActionInput;
+    if(input.intent.startsWith('traffic-')){
+      if(!canManageGoogle(session))throw new Error('Ziyaretçi raporları için yetkilendirilmiş yönetici olmalısınız.');
+      if(!['traffic-connect','traffic-service','traffic-property','traffic-settings','traffic-sync','traffic-disconnect','traffic-pdf'].includes(input.intent))throw new Error('Geçersiz ziyaretçi işlemi.');
+      if(input.intent==='traffic-connect')return {ok:true,connectURL:await prepareTraffic(db,session.shop)};
+      if(input.intent==='traffic-pdf'){
+        const workspace=await ensureWorkspace(db,session.shop),connection=await trafficStatus(db,session.shop);
+        const report=JSON.parse(workspace.data).traffic?.reports?.[input.period];
+        if(!report||report.property!==connection.property)throw new Error('Bu dönem için ziyaretçi raporu bulunamadı.');
+        const {trafficPDF}=await import('../lib/traffic-export.server.mjs');
+        const pdf=await trafficPDF(report) as Buffer;
+        return {ok:true,download:pdf.toString('base64'),encoding:'base64',mime:'application/pdf',filename:`no-sweat-visitors-${report.start}-${report.end}.pdf`} satisfies ActionResult;
+      }
+    }
     if(input.intent.startsWith('weekly-')){
       if(!canManageGoogle(session))throw new Error('Haftalık raporlar için mağaza sahibi veya yetkilendirilmiş yönetici olmalısınız.');
       if(!['weekly-settings','weekly-generate','weekly-email','weekly-pdf'].includes(input.intent))throw new Error('Geçersiz rapor işlemi.');

@@ -80,6 +80,28 @@ model GoogleOAuth {
   @@index([shop])
 }
 
+model TrafficConnection {
+  shop String @id
+  mode String
+  tokens String
+  properties String
+  property String
+  name String
+  timeZone String
+  measurementId String
+  updatedAt DateTime @updatedAt
+}
+
+model TrafficOAuth {
+  id String @id @default(cuid())
+  shop String
+  ticketHash String? @unique
+  stateHash String? @unique
+  verifier String?
+  expiresAt DateTime
+  @@index([shop])
+}
+
 model ImageCompression {
   id String @id @default(cuid())
   shop String

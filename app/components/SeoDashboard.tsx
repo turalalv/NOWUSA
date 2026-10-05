@@ -7,11 +7,12 @@ import GrowthPanel from './GrowthPanel';
 import AnalyticsOverview from './AnalyticsOverview';
 import GoogleReports from './GoogleReports';
 import WeeklyReports from './WeeklyReports';
+import TrafficAnalytics from './TrafficAnalytics';
 import {GoogleConnectionView,CompressionView,BacklinksView} from './Integrations';
 import { ImagesView, TechnicalView } from './PremiumFeatures';
 
 type Props = {suite?:SuiteData;suiteOpen?:boolean;onSuiteOpen?:(open:boolean)=>void;data:Dashboard;busy:boolean;result?:ActionResult;onAction:(input:ActionInput)=>void};
-const tabs = ["ABD müşterileri","Genel bakış","Sayfalar","Anahtar kelimeler","Dahili bağlantılar","Görseller","Görsel sıkıştırma","Backlinkler","Teknik SEO","SEO Merkezi","Google sonuçları","Haftalık raporlar","Taslaklar","Geçmiş"] as const;
+const tabs = ["ABD müşterileri","Genel bakış","Sayfalar","Anahtar kelimeler","Dahili bağlantılar","Görseller","Görsel sıkıştırma","Backlinkler","Teknik SEO","SEO Merkezi","Google sonuçları","Ziyaretçi analitiği","Haftalık raporlar","Taslaklar","Geçmiş"] as const;
 type Tab = typeof tabs[number];
 const number = (n:number) => new Intl.NumberFormat('tr-TR').format(n);
 const date = (s:string|null) => s?`${new Date(s).toLocaleString('tr-TR',{timeZone:'UTC',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} UTC`:"Henüz kontrol edilmedi";
@@ -52,7 +53,7 @@ export default function SeoDashboard({data,busy,result,onAction,suite,suiteOpen=
   const pageTable=(items:Page[]) => <s-table><s-table-header-row><s-table-header listSlot="primary">Sayfa</s-table-header><s-table-header>Tür</s-table-header><s-table-header>Kontrol puanı</s-table-header><s-table-header>Bulgular</s-table-header><s-table-header>İşlem</s-table-header></s-table-header-row><s-table-body>{items.map(p=><s-table-row key={p.id}><s-table-cell><strong>{p.title}</strong><div className="seo-url">/{p.type==='product'?'products':'collections'}/{p.handle}</div></s-table-cell><s-table-cell><s-badge>{p.type==='product'?"Ürün":'Koleksiyon'}</s-badge></s-table-cell><s-table-cell>{p.score}/100</s-table-cell><s-table-cell>{p.issues.length?<s-badge tone={p.issues.some(i=>i.severity==='high')?'critical':'warning'}>{p.issues.length} bulgu</s-badge>:<s-badge tone="success">Geçti</s-badge>}</s-table-cell><s-table-cell><s-button disabled={busy} onClick={()=>setSelected(p.id)}>İncele</s-button></s-table-cell></s-table-row>)}</s-table-body></s-table>;
   const topIssues=[...issues].sort((a,b)=>({high:0,medium:1,low:2}[a.severity]-{high:0,medium:1,low:2}[b.severity])).slice(0,5);
   const navigate=(section:string)=>{if(!(tabs as readonly string[]).includes(section))return;setTab(section==='SEO Merkezi'?'Genel bakış':section as Tab);onSuiteOpen?.(section==='SEO Merkezi');setSelected(null);setConfirm(null);setBulk([]);};
-  const icons = ['target','home','collection','search','link','image','arrows-in-horizontal','connect','code','apps','chart-line','chart-vertical','compose','clock'] as const;
+  const icons = ['target','home','collection','search','link','image','arrows-in-horizontal','connect','code','apps','chart-line','globe','chart-vertical','compose','clock'] as const;
   return <div className="studio-shell">
     <a className="studio-skip" href="#studio-content">İçeriğe geç</a>
     <aside className="studio-sidebar" aria-label="Uygulama menüsü">
@@ -74,6 +75,7 @@ export default function SeoDashboard({data,busy,result,onAction,suite,suiteOpen=
       {tab==="Dahili bağlantılar"&&<s-section heading="Dahili bağlantı önerileri"><s-paragraph color="subdued">Başlık ve etiketlerdeki ortak kelimelere dayanır. HTML’yi yalnızca bağlantının faydalı olduğu metne ekleyin. Bağlantılar otomatik yerleştirilmez.</s-paragraph>{copied&&<s-banner tone="info">{copied}</s-banner>}{data.links.length?data.links.map(l=><div className="seo-link-row" key={`${l.fromId}-${l.toId}`}><div><small>BU SAYFADAN</small><strong>{l.fromTitle}</strong></div><span>→</span><div><small>BU SAYFAYA</small><strong>{l.toTitle}</strong><p>Ortak kelimeler: {l.common.join(', ')}</p></div><s-button onClick={async()=>{const html=`<a href="${l.toUrl.replaceAll('&','&amp;').replaceAll('"','&quot;')}">${l.anchor.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</a>`;try{await navigator.clipboard.writeText(html);setCopied("Bağlantı HTML’si kopyalandı.");}catch{setCopied(html);}}}>HTML’yi kopyala</s-button></div>):<Empty heading="Uygun bağlantı önerisi yok" text="İlgili sayfalar getirildikçe başlık ve etiketlere göre öneriler burada görünecek."/>}</s-section>}
       {tab==="Görseller"&&<ImagesView data={data} busy={busy} onAction={onAction}/>}
       {tab==="Haftalık raporlar"&&<WeeklyReports data={data.weekly} busy={busy} onAction={onAction}/>}
+      {tab==="Ziyaretçi analitiği"&&<TrafficAnalytics data={data.traffic} busy={busy} result={result} onAction={onAction}/>}
       {tab==="SEO Merkezi"&&suite&&<SeoSuitePanel embedded data={suite} busy={busy} result={result} canManage={Boolean(data.canManageGoogle)} onAction={onAction}/>}
       {tab==="Teknik SEO"&&<TechnicalView data={data} busy={busy} onAction={onAction}/>}
       {tab==="Görsel sıkıştırma"&&<CompressionView data={data} busy={busy} onAction={onAction}/>}

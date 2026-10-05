@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {syncTraffic,connectTrafficService,trafficClient,verifyTrafficProperty} from './traffic.server.mjs';
 import {weeklyWindow, reportSettings, saveReportSettings} from './weekly-reports.mjs';
 import {generateWeeklyReport, sendWeeklyEmail, emailConfigured} from './weekly-reports.server.mjs';
 import {suiteOperation} from './seo-suite.server.mjs';
@@ -88,6 +89,25 @@ export async function performOperation({db,shop,admin,input,canReadOrders=false}
     let message;
     if(input.intent.startsWith('suite-'))message=await suiteOperation(state,input);
     else switch(input.intent){
+      case 'traffic-service':
+        await connectTrafficService(db,shop,input.propertyId);state.traffic={auto:false,reports:{}};message='Analytics hizmet hesabı bağlandı.';break;
+      case 'traffic-property':{
+        const {client,row:connection}=await trafficClient(db,shop);
+        if(!JSON.parse(connection.properties).some(p=>p.property===input.property))throw new Error('Bu mülk bağlantı listesinde yok.');
+        const selected=await verifyTrafficProperty(client,input.property);
+        await db.trafficConnection.update({where:{shop},data:selected});state.traffic={auto:false,reports:{}};message='Analytics mülkü seçildi.';break;
+      }
+      case 'traffic-settings':
+        state.traffic||={reports:{}};state.traffic.auto=input.auto==='true';message='Ziyaretçi raporunun otomatik güncelleme ayarı kaydedildi.';break;
+      case 'traffic-sync':
+      case 'traffic-auto':{
+        if(input.intent==='traffic-auto'&&!state.traffic?.auto){message='Ziyaretçi otomasyonu kapalı.';break;}
+        const report=await syncTraffic({db,shop,state,period:input.intent==='traffic-auto'?'week':input.period||'week'});
+        message=`${report.start} — ${report.end} ziyaretçi raporu güncellendi.`;break;
+      }
+      case 'traffic-disconnect':
+        if(input.confirm!=='DISCONNECT')throw new Error('Analytics bağlantısını kaldırmayı onaylayın.');
+        await db.trafficConnection.deleteMany({where:{shop}});await db.trafficOAuth.deleteMany({where:{shop}});delete state.traffic;message='Analytics bağlantısı ve kayıtlı ziyaret raporları kaldırıldı.';break;
       case 'weekly-settings':
         if(input.email==='true'&&!emailConfigured())throw new Error('E-posta sağlayıcısını sunucuda yapılandırın; PDF raporu şimdi kullanılabilir.');
         saveReportSettings(state,input);message='Haftalık rapor ayarları kaydedildi.';break;

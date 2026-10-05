@@ -9,7 +9,7 @@ export async function runDaily(request, db, run = performOperation, getAdmin = n
     return new Response('Unauthorized', { status: 401, headers });
   }
   const task = new URL(request.url).searchParams.get('task');
-  if (task && !['google', 'backlinks', 'suite', 'weekly'].includes(task)) return new Response('Unknown task', { status: 400, headers });
+  if (task && !['google', 'backlinks', 'suite', 'weekly', 'traffic'].includes(task)) return new Response('Unknown task', { status: 400, headers });
   assertAllowedShop(shop);
   const row = await db.seoWorkspace.findUnique({ where: { shop } });
   if (!row) return Response.json({ skipped: true }, { headers });
@@ -20,6 +20,7 @@ export async function runDaily(request, db, run = performOperation, getAdmin = n
   if ((!task || task === 'backlinks') && state.backlinksAuto) intents.push('backlink-check');
   if ((!task || task === 'suite') && state.seoSuite?.settings?.auto) intents.push('suite-daily');
   if ((!task || task === 'weekly') && state.weekly?.settings?.auto) intents.push('weekly-auto');
+  if ((!task || task === 'traffic') && state.traffic?.auto) intents.push('traffic-auto');
   const admin = { graphql: async () => { throw new Error('Scheduled tasks cannot write Shopify.'); } };
   const results = {};
   for (const intent of intents) {

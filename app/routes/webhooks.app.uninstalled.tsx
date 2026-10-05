@@ -13,6 +13,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     db.session.deleteMany({ where: { shop } }),
     db.googleConnection.deleteMany({where:{shop}}),
     db.googleOAuth.deleteMany({where:{shop}}),
+    db.trafficConnection.deleteMany({where:{shop}}),
+    db.trafficOAuth.deleteMany({where:{shop}}),
     db.imageCompression.deleteMany({where:{shop}}),
     db.seoReportDelivery.deleteMany({where:{shop}}),
     db.seoWorkspace.deleteMany({ where: { shop } }),
