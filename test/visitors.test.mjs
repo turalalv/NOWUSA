@@ -83,3 +83,13 @@ test('actual generated pixel gates consent, preserves first source and emits san
  privacy({customerPrivacy:{analyticsProcessingAllowed:false}});listeners.page_viewed(standard);listeners.clicked({data:{element:{tagName:'BUTTON'}}});await flush();assert.equal(sent.length,3);assert.equal(storage.size,0);
  privacy({customerPrivacy:{analyticsProcessingAllowed:true}});listeners.page_viewed({...standard,context:{...standard.context,document:{location:{href:'https://www.nosweatusa.com/account/orders/secret'}}}});await flush();assert.equal(sent.length,3);
 });
+
+test('country source totals cover the full period, beyond the recent 100 visit feed',()=>{
+ const events=Array.from({length:125},(_,i)=>({...event,visit:`visit-${i}`,country:i<110?'US':'AZ',device:i<110?'ios-mobile':i<120?'android-tablet':'desktop',occurredAt:now,source:i<120?'google':'instagram'}));
+ const report=summarizeVisitors(events,{now,timeZone:'UTC'});
+ assert.equal(report.recent.length,100);
+ const google=report.sources.find(s=>s.source==='google');
+ assert.equal(google.visits,120);assert.deepEqual(google.countries,{US:110,AZ:10});
+ assert.deepEqual(report.sources.find(s=>s.source==='instagram').countries,{AZ:5});
+ assert.deepEqual(report.devices,[{device:'ios',visits:110,countries:{US:110}},{device:'android',visits:10,countries:{AZ:10}},{device:'desktop',visits:5,countries:{AZ:5}}]);
+});
