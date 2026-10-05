@@ -26,7 +26,7 @@ try{
  await page.getByText('Ziyaret #abc123',{exact:true}).waitFor();
  await page.locator('.visitor-globe canvas').waitFor();assert(await page.locator('.visitor-globe canvas').evaluate(c=>c.width>100));assert.equal(await page.getByRole('button',{name:/Döndür|Duraklat/}).count(),0);
  await page.locator('.live-feed summary').first().click();await page.getByText('Ürün: Canlı örnek ürün',{exact:true}).waitFor();
- await page.getByText('Dış bağlantı: instagram.com',{exact:true}).waitFor();await page.getByText('Sunucu bağlantısı yok',{exact:true}).waitFor();
+ await page.getByText('Dış bağlantı: instagram.com',{exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'Bot trafiği',exact:true}).count(),0);
  assert.equal(await page.locator('.live-sources').count(),0);assert.match(await page.locator('.live-device-counts').innerText(),/iOS/);assert.match(await page.locator('.live-device-counts').innerText(),/Android/);
  await page.locator('.live-visitors .traffic-countries button').filter({hasText:'Azerbaycan'}).click();assert.equal(await page.getByText('Ziyaret #def123',{exact:true}).count(),0);assert.equal(await page.locator('.live-sources button').count(),1);assert.match(await page.locator('.live-sources').innerText(),/Instagram/);assert.equal(await page.locator('.live-device-counts>div').filter({hasText:'Masaüstü'}).locator('strong').innerText(),'0');assert.equal(await page.locator('.live-device-counts>div').filter({hasText:'iOS'}).locator('strong').innerText(),'1');
  await page.getByRole('button',{name:'Filtreleri temizle',exact:true}).click();assert.equal(await page.getByText('Ziyaret #def123',{exact:true}).count(),1);

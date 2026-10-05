@@ -1,7 +1,6 @@
 import {useEffect,useState} from 'react';
 import {useFetcher} from 'react-router';
 import VisitorGlobe from './VisitorGlobe';
-import VisitorBots from './VisitorBots';
 import type {BotData} from './VisitorBots';
 import {VISITOR_PERIODS,VISITOR_DEVICES,countryFlag} from '../lib/visitors.mjs';
 import type {ActionInput} from '../lib/types';
@@ -35,7 +34,6 @@ export function LiveVisitorPanel({data,period,onPeriod,refresh,loading,busy,onAc
    </section>
    <section className="analytics-card"><h3>Günlük ziyaretler</h3><div className="traffic-chart">{report.daily.map(d=><div key={d.date}><time>{d.date.slice(5)}</time><div><span style={{width:`${d.visits/Math.max(1,...report.daily.map(r=>r.visits))*100}%`}}/></div><strong>{d.visits}</strong></div>)}</div></section>
    <section className="analytics-card"><h3>Görüntülenen ürünler</h3><div className="traffic-table"><table><thead><tr><th>Ürün</th><th>Görüntüleme</th></tr></thead><tbody>{report.products.slice(0,100).map(p=><tr key={p.path}><td><strong>{p.title}</strong><small>{p.path}</small></td><td>{p.views}</td></tr>)}</tbody></table></div>{!report.products.length&&<p>Henüz ürün görüntüleme olayı yok.</p>}</section>
-   <VisitorBots data={data?.bots} busy={busy} onAction={onAction}/>
   </>}
   <details className="studio-details traffic-methodology"><summary>Ölçüm bilgileri</summary><div className="traffic-settings">
    {report&&<p>{report.start} — {report.end} · {report.timeZone} · Son veri: {at(report.generatedAt)}</p>}
